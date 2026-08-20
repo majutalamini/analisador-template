@@ -1,0 +1,29 @@
+{
+  "manifest_version": 3,
+  "name": "Analisador de Templates DOCX",
+  "version": "5.1.0",
+  "description": "Aponta linha por linha os erros de um template .docx",
+  "permissions": ["sidePanel"],
+  "host_permissions": ["https://docs.google.com/*"],
+  "action": {
+    "default_title": "Analisador de Templates",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "side_panel": {
+    "default_path": "popup.html"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
