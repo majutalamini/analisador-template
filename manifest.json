@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Analisador de Templates DOCX",
-  "version": "5.1.0",
+  "version": "6.0.0",
   "description": "Aponta linha por linha os erros de um template .docx",
   "permissions": ["sidePanel"],
   "host_permissions": ["https://docs.google.com/*"],

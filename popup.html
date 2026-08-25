@@ -253,6 +253,66 @@
   button#refreshBtn.spinning svg { animation: spin 0.7s linear infinite; }
   @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
+  .field-label-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .info-icon {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: rgba(255, 200, 60, 0.16);
+    color: #f0c040;
+    cursor: help;
+    flex: none;
+  }
+  .info-icon svg { display: block; }
+
+  .info-icon .tooltip {
+    visibility: hidden;
+    opacity: 0;
+    position: absolute;
+    bottom: calc(100% + 9px);
+    left: 50%;
+    transform: translateX(-50%) translateY(4px);
+    background: var(--panel-2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 9px 11px;
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: none;
+    letter-spacing: normal;
+    line-height: 1.45;
+    width: 210px;
+    box-shadow: var(--shadow);
+    z-index: 10;
+    pointer-events: none;
+    transition: opacity 0.15s ease, transform 0.15s ease, visibility 0.15s;
+  }
+  .info-icon .tooltip::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: var(--panel-2);
+  }
+  .info-icon:hover .tooltip,
+  .info-icon:focus-visible .tooltip {
+    visibility: visible;
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
   a.ghost-btn {
     display: flex;
     align-items: center;
@@ -524,7 +584,13 @@
     <div class="divider">ou</div>
 
     <label class="field">
-      Link do Google Docs
+      <span class="field-label-row">
+        Link do Google Docs
+        <span class="info-icon" tabindex="0">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <span class="tooltip">É necessário que o documento esteja compartilhado como público ("Qualquer pessoa com o link pode visualizar") para que a análise funcione.</span>
+        </span>
+      </span>
       <input type="text" id="gdocsUrl" class="link-input" placeholder="https://docs.google.com/document/d/..." autocomplete="off" spellcheck="false" />
     </label>
     <div class="btn-row">
@@ -550,7 +616,7 @@
   </div>
 
   <footer>
-    <small class="note">Analisador de Templates DOCX — v5.1.0</small>
+    <small class="note">Analisador de Templates DOCX — v6.0.0</small>
     <small class="note">Desenvolvido por Maria Julia Talamini</small>
   </footer>
 

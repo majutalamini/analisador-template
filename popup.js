@@ -465,7 +465,7 @@ async function fetchGoogleDocxBuffer(docId) {
   try {
     res = await fetch(exportUrl, { credentials: "omit" });
   } catch (err) {
-    throw new Error("Não foi possível conectar ao Google Docs. Verifique sua conexão.");
+    throw new Error("Certifica-se de que o documento está compartilhado como 'Qualquer pessoa com o link' (leitor). Caso contrário, não será possível acessá-lo.");
   }
 
   if (!res.ok) {
