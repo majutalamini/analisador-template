@@ -506,6 +506,7 @@
   .var-category-grid.single .var-pill-name { white-space: pre-wrap; font-size: 10.5px; }
 
   .var-pill {
+    position: relative;
     display: flex;
     flex-direction: column;
     gap: 5px;
@@ -521,6 +522,45 @@
   .var-pill:hover { border-color: var(--accent); background: var(--panel-2); }
   .var-pill:active { transform: scale(0.97); }
   .var-pill.copied { border-color: var(--ok); background: var(--ok-soft); }
+
+  .var-pill-tooltip {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%) translateY(3px) scale(0.98);
+    background: var(--panel-2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.4;
+    white-space: normal;
+    width: max-content;
+    max-width: 200px;
+    box-shadow: var(--shadow);
+    z-index: 20;
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.08s ease-out, transform 0.08s ease-out, visibility 0.08s;
+  }
+  .var-pill-tooltip::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: var(--panel-2);
+  }
+  .var-pill:hover .var-pill-tooltip,
+  .var-pill:focus-visible .var-pill-tooltip {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
 
   .var-pill .var-badge { align-self: flex-start; }
 

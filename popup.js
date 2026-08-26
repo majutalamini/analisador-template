@@ -64,6 +64,104 @@ const VAR_CATEGORIES = [
   { key: "estruturas",  label: "Estruturas Prontas" },
 ];
 
+// Ordem definida no documento de referência do cliente. Cada entrada é "nomeDaVariavel:tipo"
+// (tipo = var/img/loop/col/cond), pois a mesma variável pode aparecer com tipos diferentes.
+const VARIABLE_ORDER = {
+  cliente: [
+    "NomeCliente:var", "CpfCliente:var", "RgCliente:var", "DataNascimentoCliente:var", "SexoCliente:var",
+    "EmailCliente:var", "TelefoneCliente:var", "CepCliente:var", "CidadeCliente:var", "BairroCliente:var",
+    "EnderecoCliente:var", "ComplementoEnderecoCliente:var", "NumeroEnderecoCliente:var", "UfCliente:var",
+  ],
+  empresa: [
+    "NomeFantasiaFilial:var", "RazaoSocialFilial:var", "CnpjCpfFilial:var", "TelefoneFilial:var", "EmailFilial:var",
+    "CepFilial:var", "CidadeFilial:var", "BairroFilial:var", "EnderecoFilial:var", "ComplementoEnderecoFilial:var",
+    "NumeroEnderecoFilial:var", "UfFilial:var", "LogoFilial:img",
+  ],
+  contrato: [
+    "DescricaoContrato:var", "modalidade.DescricaoModalidade:var", "DuracaoContrato:var", "ValorTotalContrato:var",
+    "ValorTotalContratoFormatado:var", "parcela.ValorFormatado:var", "ValorTotalContratoSemDescontoFormatado:var",
+    "ValorTotalMedioMensalContrato:var", "ValorTotalMedioMensalContratoFormatado:var", "DataImpressao:var",
+    "DataImpressaoCompleta:var", "DataImpressaoFormatada:var", "DataValidade:var", "parcela.DataVencimento:var",
+    "gradeHorario.DiaDaSemana:var", "gradeHorario.HorarioFinal:var", "gradeHorario.HorarioInicial:var",
+    "modalidade.DiasHorariosLiberadosParaAcesso:var", "modalidade.HorariosLiberadosParaAcesso:var",
+    "modalidade.LimiteAcessos:var", "modalidade.QtdePacoteAulas:var", "modalidade.QtdeSessoesPorSemana:var",
+    "QuantMaximoDiasSuspensao:var", "QuantMaximoSuspensoes:var",
+    "modalidade.GradeHorarios:col", "Modalidades:col", "Parcelas:col", "gradeHorario:loop",
+    "QuantMaximoDiasSuspensao:cond", "ValorAdesao:cond", "modalidade.TemGradeHorarios:cond", "modalidade.Tipo:cond",
+  ],
+  responsavel: [
+    "NomeResponsavel:var", "CpfResponsavel:var", "RgResponsavel:var", "DataNascimentoResponsavel:var", "SexoResponsavel:var",
+    "EmailResponsavel:var", "CepResponsavel:var", "CidadeResponsavel:var", "BairroResponsavel:var",
+    "EnderecoResponsavel:var", "ComplementoEnderecoResponsavel:var", "NumeroEnderecoResponsavel:var", "UfResponsavel:var",
+    "TemResponsavel:cond",
+  ],
+};
+
+const VARIABLE_ORDER_INDEX = Object.fromEntries(
+  Object.entries(VARIABLE_ORDER).map(([cat, order]) => [cat, new Map(order.map((k, i) => [k, i]))])
+);
+
+// Exemplos de valor para cada variável, usados na dica exibida ao passar o mouse sobre o pill.
+const VARIABLE_EXAMPLES = {
+  NomeCliente: "Nome",
+  CpfCliente: "000.000.000-00",
+  RgCliente: "00.000.000-0",
+  DataNascimentoCliente: "00/00/0000",
+  SexoCliente: "Masculino/Feminino",
+  EmailCliente: "cliente@email.com",
+  TelefoneCliente: "(00) 0 0000-0000",
+  EnderecoCliente: "Rua Agrimensor Cassimiro Milioli",
+  ComplementoEnderecoCliente: "Sala 0",
+  BairroCliente: "Centro",
+  CepCliente: "88802-100",
+  CidadeCliente: "Criciúma",
+  UfCliente: "SC",
+  NumeroEnderecoCliente: "0",
+
+  RazaoSocialFilial: "Academia Next Fit LTDA",
+  NomeFantasiaFilial: "Academia Next Fit",
+  LogoFilial: "Imagem da logo",
+  CnpjCpfFilial: "31.265.901/0001-39",
+  TelefoneFilial: "(00) 0 0000-0000",
+  EmailFilial: "empresa@email.com",
+  EnderecoFilial: "Rua Agrimensor Cassimiro Milioli",
+  NumeroEnderecoFilial: "0",
+  ComplementoEnderecoFilial: "Sala 0",
+  BairroFilial: "Centro",
+  CepFilial: "88802-100",
+  CidadeFilial: "Criciúma",
+  UfFilial: "SC",
+
+  DescricaoContrato: "Contrato mensal de pilates",
+  DuracaoContrato: "1 mês",
+  ValorTotalContrato: "180,00",
+  ValorTotalContratoFormatado: "180,00",
+  ValorTotalContratoSemDescontoFormatado: "180,00",
+  QuantMaximoSuspensoes: "2",
+  QuantMaximoDiasSuspensao: "20",
+  DataInicio: "00/00/0000",
+  DataValidade: "00/00/0000",
+  DataImpressao: "00/00/0000",
+  DataImpressaoCompleta: "00/00/0000 23:00",
+  DataImpressaoFormatada: "19 de janeiro de 2026",
+  ValorTotalMedioMensalContrato: "180,00",
+  ValorTotalMedioMensalContratoFormatado: "180,00",
+
+  NomeResponsavel: "Nome",
+  CpfResponsavel: "000.000.000-00",
+  RgResponsavel: "00.000.000-0",
+  DataNascimentoResponsavel: "00/00/0000",
+  SexoResponsavel: "Masculino/Feminino",
+  EmailResponsavel: "responsavel@email.com",
+  EnderecoResponsavel: "Rua Agrimensor Cassimiro Milioli",
+  NumeroEnderecoResponsavel: "50",
+  ComplementoEnderecoResponsavel: "Sala 0",
+  BairroResponsavel: "Centro",
+  CepResponsavel: "88802-100",
+  CidadeResponsavel: "Criciúma",
+  UfResponsavel: "SC",
+};
+
 const STRUCTURES = [
   {
     key: "contratante",
@@ -291,6 +389,15 @@ function renderVariables(schema, filter) {
     const catEntries = entries.filter((e) => e.category === cat.key);
     if (catEntries.length === 0) continue;
 
+    const orderIndex = VARIABLE_ORDER_INDEX[cat.key];
+    if (orderIndex) {
+      catEntries.sort((a, b) => {
+        const ia = orderIndex.has(`${a.name}:${a.label}`) ? orderIndex.get(`${a.name}:${a.label}`) : Infinity;
+        const ib = orderIndex.has(`${b.name}:${b.label}`) ? orderIndex.get(`${b.name}:${b.label}`) : Infinity;
+        return ia - ib;
+      });
+    }
+
     const isOpen = isFiltering || openVarCategories.has(cat.key);
 
     const catDiv = document.createElement("div");
@@ -331,6 +438,15 @@ function renderVariables(schema, filter) {
     for (const entry of catEntries) {
       const pill = document.createElement("div");
       pill.className = "var-pill";
+
+      const example = VARIABLE_EXAMPLES[entry.name];
+      if (example) {
+        pill.tabIndex = 0;
+        const tooltip = document.createElement("span");
+        tooltip.className = "var-pill-tooltip";
+        tooltip.textContent = `Exemplo: ${example}`;
+        pill.appendChild(tooltip);
+      }
 
       const badge = document.createElement("span");
       badge.className = `var-badge var-badge-${entry.label}`;
