@@ -24,6 +24,31 @@
     return out;
   }
 
+  // Como extractLogicalText, mas tambem marca quais trechos do texto extraido vem de
+  // dentro de uma caixa de texto de um desenho/forma (<w:txbxContent>) - usado para nao
+  // acusar "<<image [...]>>" como texto solto quando ele ja esta dentro de um desenho.
+  function extractLogicalTextWithDrawingRanges(documentXml) {
+    const withBreaks = documentXml.replace(/<\/w:p>/g, "\u2029");
+    let out = "";
+    const drawingRanges = [];
+    let depth = 0;
+    const re = /<w:txbxContent\b[^>]*>|<\/w:txbxContent>|<w:t\b[^>]*>([\s\S]*?)<\/w:t>|\u2029/g;
+    let m;
+    while ((m = re.exec(withBreaks))) {
+      if (m[0] === "\u2029") { out += "\n"; continue; }
+      if (m[0].startsWith("<w:txbxContent")) { depth++; continue; }
+      if (m[0] === "</w:txbxContent>") { depth = Math.max(0, depth - 1); continue; }
+      const start = out.length;
+      out += decodeXmlEntities(m[1]);
+      if (depth > 0) drawingRanges.push([start, out.length]);
+    }
+    return { text: out, drawingRanges };
+  }
+
+  function isInsideDrawing(drawingRanges, index) {
+    return drawingRanges.some(([start, end]) => index >= start && index < end);
+  }
+
   function extractIdentifiers(expr) {
     if (!expr) return [];
     const ids = expr.match(/[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*/g) || [];
@@ -110,6 +135,18 @@
     return out;
   }
 
+  async function extractLogicalTextFromPartsWithDrawingRanges(zip, parts) {
+    const out = [];
+    for (const part of parts) {
+      const file = zip.file(part.name);
+      if (!file) continue;
+      const xml = await file.async("string");
+      const { text, drawingRanges } = extractLogicalTextWithDrawingRanges(xml);
+      out.push({ part, text, drawingRanges });
+    }
+    return out;
+  }
+
   async function buildSchemaFromDocxBuffer(arrayBuffer) {
     const zip = await JSZip.loadAsync(arrayBuffer);
     const parts = getDocxParts(zip);
@@ -154,8 +191,9 @@
     return text.slice(start, end).replace(/\s+/g, " ").trim();
   }
 
-  function lintText(text, rawSchema) {
+  function lintText(text, rawSchema, drawingRanges) {
     const schema = normalizeSchema(rawSchema);
+    const ranges = drawingRanges || [];
     const problems = [];
     const validIdentifiers = new Set([...schema.variables, ...schema.conditionFields, ...schema.loopVars, ...schema.loopCollections]);
 
@@ -187,7 +225,7 @@
       } else if (kind === "image") {
         if (!schema.imageVariables.has(inner)) {
           problems.push({ line, snippet, message: `Tag de imagem "<<image [${inner}]>>" não existe no modelo de referência.` });
-        } else {
+        } else if (!isInsideDrawing(ranges, m.index)) {
           problems.push({ line, snippet, message: `A variável de imagem "<<image [${inner}]>>" foi encontrada como texto no documento. Ela precisa ser inserida como uma imagem (desenho) no arquivo .docx — se ficar como texto digitado, ocorrerá um erro ao gerar o documento.` });
         }
       } else {
@@ -236,11 +274,11 @@
   async function lintDocxBuffer(arrayBuffer, schema) {
     const zip = await JSZip.loadAsync(arrayBuffer);
     const parts = getDocxParts(zip);
-    const chunks = await extractLogicalTextFromParts(zip, parts);
+    const chunks = await extractLogicalTextFromPartsWithDrawingRanges(zip, parts);
 
     const problems = [];
-    for (const { part, text } of chunks) {
-      const partProblems = lintText(text, schema);
+    for (const { part, text, drawingRanges } of chunks) {
+      const partProblems = lintText(text, schema, drawingRanges);
       for (const p of partProblems) {
         if (part.label) p.part = part.label;
         problems.push(p);

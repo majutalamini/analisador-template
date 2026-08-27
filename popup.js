@@ -356,11 +356,12 @@ function renderVariables(schema, filter) {
   const entries = [];
   const added = new Set();
 
-  // Apenas variáveis do tipo "var" ficam visíveis para copiar na extensão.
-  // img/loop/col/cond continuam existindo no schema e sendo usadas na análise do template,
+  // Apenas variáveis do tipo "var" e "img" ficam visíveis para copiar na extensão.
+  // loop/col/cond continuam existindo no schema e sendo usadas na análise do template,
   // apenas não aparecem nesta lista de cópia.
   const groups = [
-    { key: "variables",       label: "var",  title: "Variável de texto — usar como <<[NomeVariavel]>>" },
+    { key: "variables",      label: "var", title: "Variável de texto — usar como <<[NomeVariavel]>>" },
+    { key: "imageVariables", label: "img", title: "Variável de imagem — usar como <<image [NomeVariavel]>>" },
   ];
 
   // Variáveis que continuam no schema/análise, mas ficam ocultas nesta lista de cópia.
