@@ -103,7 +103,7 @@ const VARIABLE_ORDER_INDEX = Object.fromEntries(
 
 // Exemplos de valor para cada variável, usados na dica exibida ao passar o mouse sobre o pill.
 const VARIABLE_EXAMPLES = {
-  NomeCliente: "Nome",
+  NomeCliente: "Maria Julia",
   CpfCliente: "000.000.000-00",
   RgCliente: "00.000.000-0",
   DataNascimentoCliente: "00/00/0000",
@@ -146,8 +146,11 @@ const VARIABLE_EXAMPLES = {
   DataImpressaoFormatada: "19 de janeiro de 2026",
   ValorTotalMedioMensalContrato: "180,00",
   ValorTotalMedioMensalContratoFormatado: "180,00",
+  "modalidade.DescricaoModalidade": "Pilates",
+  "parcela.ValorFormatado": "70,00",
+  ValorAdesaoFormatado: "70,00",
 
-  NomeResponsavel: "Nome",
+  NomeResponsavel: "Maria Julia",
   CpfResponsavel: "000.000.000-00",
   RgResponsavel: "00.000.000-0",
   DataNascimentoResponsavel: "00/00/0000",
@@ -246,6 +249,7 @@ function splitPascalCase(str) {
 
 const CUSTOM_TITLES = {
   "parcela.DataVencimento": "Data de Vencimento da Parcela",
+  "parcela.ValorFormatado": "Valor Formatado Parcela",
 };
 
 function prettifyName(rawName, category) {
@@ -352,16 +356,30 @@ function renderVariables(schema, filter) {
   const entries = [];
   const added = new Set();
 
+  // Apenas variáveis do tipo "var" ficam visíveis para copiar na extensão.
+  // img/loop/col/cond continuam existindo no schema e sendo usadas na análise do template,
+  // apenas não aparecem nesta lista de cópia.
   const groups = [
     { key: "variables",       label: "var",  title: "Variável de texto — usar como <<[NomeVariavel]>>" },
-    { key: "imageVariables",  label: "img",  title: "Variável de imagem — usar como <<image [NomeVariavel]>>" },
-    { key: "loopVars",        label: "loop", title: "Item de laço — definido no <<foreach>>" },
-    { key: "loopCollections", label: "col",  title: "Coleção de laço — usar como <<foreach [item in Colecao]>>" },
-    { key: "conditionFields", label: "cond", title: "Campo de condição — usar como <<if [Campo > 0]>>" },
   ];
+
+  // Variáveis que continuam no schema/análise, mas ficam ocultas nesta lista de cópia.
+  const HIDDEN_VAR_NAMES = new Set([
+    "parcela.DataVencimento",
+    "gradeHorario.DiaDaSemana",
+    "gradeHorario.HorarioFinal",
+    "gradeHorario.HorarioInicial",
+    "modalidade.DiasHorariosLiberadosParaAcesso",
+    "modalidade.HorariosLiberadosParaAcesso",
+    "modalidade.LimiteAcessos",
+    "modalidade.QtdePacoteAulas",
+    "modalidade.QtdeSessoesPorSemana",
+    "TemResponsavel",
+  ]);
 
   for (const group of groups) {
     for (const name of (schema[group.key] || [])) {
+      if (HIDDEN_VAR_NAMES.has(name)) continue;
       const key = `${name}:${group.label}`;
       if (added.has(key)) continue;
       added.add(key);
