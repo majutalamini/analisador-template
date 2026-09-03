@@ -85,6 +85,7 @@ const VARIABLE_ORDER = {
     "gradeHorario.DiaDaSemana:var", "gradeHorario.HorarioFinal:var", "gradeHorario.HorarioInicial:var",
     "modalidade.DiasHorariosLiberadosParaAcesso:var", "modalidade.DiasLiberadosParaAcesso:var", "modalidade.HorariosLiberadosParaAcesso:var",
     "modalidade.LimiteAcessos:var", "modalidade.QtdePacoteAulas:var", "modalidade.QtdeSessoesPorSemana:var",
+    "modalidade.TipoLimiteAcessosPorPeriodo:var", "modalidade.QtdeLimiteAcessosPorPeriodo:var",
     "QuantMaximoDiasSuspensao:var", "QuantMaximoSuspensoes:var",
     "modalidade.GradeHorarios:col", "Modalidades:col", "Parcelas:col", "gradeHorario:loop",
     "QuantMaximoDiasSuspensao:cond", "ValorAdesao:cond", "modalidade.TemGradeHorarios:cond", "modalidade.Tipo:cond",
@@ -377,6 +378,8 @@ function renderVariables(schema, filter) {
     "modalidade.LimiteAcessos",
     "modalidade.QtdePacoteAulas",
     "modalidade.QtdeSessoesPorSemana",
+    "modalidade.TipoLimiteAcessosPorPeriodo",
+    "modalidade.QtdeLimiteAcessosPorPeriodo",
     "TemResponsavel",
   ]);
 
