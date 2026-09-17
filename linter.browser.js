@@ -191,20 +191,125 @@
     return text.slice(start, end).replace(/\s+/g, " ").trim();
   }
 
+  // Como snippetAround, mas sem contexto antes do indice — usado para previews que devem
+  // comecar exatamente no inicio da tag problematica, sem incluir o final da tag anterior.
+  function snippetFrom(text, index, len) {
+    const end = Math.min(text.length, index + len);
+    return text.slice(index, end).replace(/\s+/g, " ").trim();
+  }
+
+  const WS_RE = /\s/;
+  const KEYWORD_RE = /^(if|foreach|image)\b/;
+
+  // Percorre o texto caractere a caractere procurando tags "<<...>>". Ao contrario de uma
+  // unica regex, isso permite:
+  //  - nao se confundir com os operadores "<" / ">" usados dentro de condicoes, ex.:
+  //    "<<if [modalidade.TemGradeHorarios > 0]>>" (o ">" ali e comparacao, nao fechamento);
+  //  - detectar uma tag que nunca encontra o ">>" de fechamento (ex.: "<<if [Cond]" seguido
+  //    de texto comum ou de outra tag), que antes passava despercebida por nenhuma regex
+  //    conseguir casar com ela.
+  // Retorna as tags reconhecidas (bem formadas ou nao) e ja empilha em `problems` os erros
+  // de sintaxe encontrados durante a varredura.
+  function scanTags(text, problems) {
+    const tags = [];
+    const n = text.length;
+    let i = 0;
+    while (i < n) {
+      if (text[i] !== "<") { i++; continue; }
+
+      let j = i;
+      while (j < n && text[j] === "<") j++;
+      const openLen = j - i;
+      const tagStart = i;
+      let k = j;
+
+      while (k < n && WS_RE.test(text[k])) k++;
+      let isClose = false;
+      if (text[k] === "/") { isClose = true; k++; while (k < n && WS_RE.test(text[k])) k++; }
+
+      let kind = null;
+      const kwMatch = KEYWORD_RE.exec(text.slice(k, k + 10));
+      if (kwMatch) { kind = kwMatch[1]; k += kind.length; while (k < n && WS_RE.test(text[k])) k++; }
+
+      let inner = null;
+      let hasBracket = false;
+      if (text[k] === "[") {
+        hasBracket = true;
+        const bStart = k + 1;
+        const bEnd = text.indexOf("]", bStart);
+        if (bEnd === -1) {
+          const line = lineOf(text, tagStart);
+          const snippet = snippetFrom(text, tagStart, 60);
+          problems.push({ line, snippet, message: `Tag "${snippet}" tem um colchete "[" que nunca é fechado com "]".` });
+          i = tagStart + openLen;
+          continue;
+        }
+        inner = text.slice(bStart, bEnd);
+        k = bEnd + 1;
+      }
+      while (k < n && WS_RE.test(text[k])) k++;
+
+      // Caso "<<NomeDaVariavel>>" (sem colchetes) — trata separadamente para dar uma
+      // mensagem especifica em vez do erro generico de "tag nunca fechada".
+      if (!hasBracket && !kind && !isClose) {
+        const idMatch = /^[A-Za-z_][A-Za-z0-9_.]*/.exec(text.slice(k));
+        if (idMatch) {
+          let k2 = k + idMatch[0].length;
+          while (k2 < n && WS_RE.test(text[k2])) k2++;
+          if (text[k2] === ">") {
+            let m2 = k2;
+            while (m2 < n && text[m2] === ">") m2++;
+            const raw = text.slice(tagStart, m2);
+            problems.push({ line: lineOf(text, tagStart), snippet: raw, message: `Tag "${raw}" sem colchetes — o formato correto é "<<[${idMatch[0]}]>>".` });
+            i = m2;
+            continue;
+          }
+        }
+      }
+
+      if (text[k] === ">") {
+        let m2 = k;
+        while (m2 < n && text[m2] === ">") m2++;
+        const closeLen = m2 - k;
+        const tagEnd = m2;
+        tags.push({ start: tagStart, end: tagEnd, openLen, closeLen, isClose, kind, inner, raw: text.slice(tagStart, tagEnd) });
+        i = tagEnd;
+        continue;
+      }
+
+      // Nunca encontrou o ">" de fechamento antes de outro conteudo (texto comum ou outra
+      // tag) — a tag ficou "aberta" e mal formada.
+      const preview = snippetFrom(text, tagStart, 60);
+      problems.push({ line: lineOf(text, tagStart), snippet: preview, message: `Tag "${preview}" nunca é fechada com ">>" antes de outro conteúdo — verifique se falta o fechamento dessa tag.` });
+      if (kind === "if" || kind === "foreach") {
+        tags.push({ start: tagStart, end: tagStart + openLen, openLen, closeLen: 0, isClose, kind, inner: null, raw: text.slice(tagStart, Math.min(n, tagStart + 40)), malformed: true });
+      }
+      i = tagStart + openLen;
+    }
+    return tags;
+  }
+
   function lintText(text, rawSchema, drawingRanges) {
     const schema = normalizeSchema(rawSchema);
     const ranges = drawingRanges || [];
     const problems = [];
     const validIdentifiers = new Set([...schema.variables, ...schema.conditionFields, ...schema.loopVars, ...schema.loopCollections]);
 
-    TAG_RE.lastIndex = 0;
-    let m;
-    while ((m = TAG_RE.exec(text))) {
-      const isClose = m[1] === "/";
-      const kind = m[2];
-      const inner = (m[3] || "").trim();
-      const line = lineOf(text, m.index);
-      const snippet = snippetAround(text, m.index, m[0].length);
+    const tags = scanTags(text, problems);
+
+    for (const tag of tags) {
+      const { start, openLen, closeLen, isClose, kind, malformed } = tag;
+      const inner = (tag.inner || "").trim();
+      const line = lineOf(text, start);
+      const snippet = snippetAround(text, start, tag.end - start);
+
+      if (malformed) continue; // ja reportada pelo scanTags; so entra na pilha de aninhamento abaixo
+
+      if (openLen !== 2 || closeLen !== 2) {
+        problems.push({ line, snippet, message: `Tag "${tag.raw}" está com "<" ou ">" incorretos — o formato correto usa exatamente "<<" no início e ">>" no final, sem variações.` });
+        continue;
+      }
+
       if (isClose) continue;
 
       if (kind === "if") {
@@ -225,7 +330,7 @@
       } else if (kind === "image") {
         if (!schema.imageVariables.has(inner)) {
           problems.push({ line, snippet, message: `Tag de imagem "<<image [${inner}]>>" não existe no modelo de referência.` });
-        } else if (!isInsideDrawing(ranges, m.index)) {
+        } else if (!isInsideDrawing(ranges, start)) {
           problems.push({ line, snippet, message: `A variável de imagem "<<image [${inner}]>>" foi encontrada como texto no documento. Ela precisa ser inserida como uma imagem (desenho) no arquivo .docx — se ficar como texto digitado, ocorrerá um erro ao gerar o documento.` });
         }
       } else {
@@ -234,24 +339,14 @@
       }
     }
 
-    const noBracketRe = /<<(?!\/|if\b|foreach\b|image\b)\s*[A-Za-z_][A-Za-z0-9_.]*\s*>>/g;
-    while ((m = noBracketRe.exec(text))) {
-      problems.push({ line: lineOf(text, m.index), snippet: snippetAround(text, m.index, m[0].length), message: `Tag "${m[0]}" sem colchetes — o formato correto é "<<[${m[0].replace(/<</, "").replace(/>>/, "").trim()}]>>".` });
-    }
-    const singleBracketRe = /(?<!<)<\[[^\]]+\]>(?!>)/g;
-    while ((m = singleBracketRe.exec(text))) {
-      problems.push({ line: lineOf(text, m.index), snippet: snippetAround(text, m.index, m[0].length), message: `Tag "${m[0]}" com colchete simples — o formato correto usa "<<" e ">>" duplicados.` });
-    }
-
     const stack = [];
-    const nestRe = /<<\s*(\/?)(if|foreach)\b\s*(?:\[[^\]]*\])?\s*>>/g;
-    while ((m = nestRe.exec(text))) {
-      const isClose = m[1] === "/";
-      const kind = m[2];
-      const line = lineOf(text, m.index);
-      const snippet = snippetAround(text, m.index, m[0].length);
+    for (const tag of tags) {
+      if (tag.kind !== "if" && tag.kind !== "foreach") continue;
+      const { isClose, kind } = tag;
+      const line = lineOf(text, tag.start);
+      const snippet = tag.malformed ? tag.raw : snippetAround(text, tag.start, tag.end - tag.start);
       if (!isClose) {
-        stack.push({ kind, line, snippet, raw: m[0] });
+        stack.push({ kind, line, snippet, raw: tag.raw });
       } else if (stack.length === 0) {
         problems.push({ line, snippet, message: `Fechamento "<</${kind}>>" sem nenhuma abertura correspondente antes dele.` });
       } else {
