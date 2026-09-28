@@ -495,6 +495,20 @@
   }
   .var-category.open .var-category-chevron { transform: rotate(180deg); }
 
+  .var-category-note {
+    display: none;
+    margin: 0 4px 10px;
+    padding: 9px 11px;
+    border-radius: 8px;
+    background: rgba(255, 200, 60, 0.12);
+    border: 1px solid rgba(255, 200, 60, 0.3);
+    color: #f0c040;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.45;
+  }
+  .var-category.open .var-category-note { display: block; }
+
   .var-category-grid {
     display: none;
     grid-template-columns: 1fr 1fr;
@@ -656,7 +670,7 @@
   </div>
 
   <footer>
-    <small class="note">Analisador de Templates DOCX — v9.3.0</small>
+    <small class="note">Analisador de Templates DOCX — v9.4.0</small>
     <small class="note">Desenvolvido por Maria Julia Talamini</small>
   </footer>
 

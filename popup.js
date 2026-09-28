@@ -61,8 +61,23 @@ const VAR_CATEGORIES = [
   { key: "empresa",     label: "Dados da Empresa" },
   { key: "contrato",    label: "Dados de Contrato" },
   { key: "responsavel", label: "Dados do Responsável" },
+  { key: "foreach",     label: "Variáveis de Foreach" },
   { key: "estruturas",  label: "Estruturas Prontas" },
 ];
+
+// Variáveis que só podem ser usadas dentro de um bloco <<foreach>> (ex.: parcela.*, gradeHorario.*
+// e alguns campos de modalidade.*), pois dependem do item de iteração do laço.
+const FOREACH_ONLY_VARS = new Set([
+  "parcela.DataVencimento",
+  "gradeHorario.DiaDaSemana",
+  "gradeHorario.HorarioFinal",
+  "gradeHorario.HorarioInicial",
+  "modalidade.DiasHorariosLiberadosParaAcesso",
+  "modalidade.HorariosLiberadosParaAcesso",
+  "modalidade.LimiteAcessos",
+  "modalidade.QtdePacoteAulas",
+  "modalidade.QtdeSessoesPorSemana",
+]);
 
 // Ordem definida no documento de referência do cliente. Cada entrada é "nomeDaVariavel:tipo"
 // (tipo = var/img/loop/col/cond), pois a mesma variável pode aparecer com tipos diferentes.
@@ -81,10 +96,8 @@ const VARIABLE_ORDER = {
     "DescricaoContrato:var", "modalidade.DescricaoModalidade:var", "DuracaoContrato:var", "ValorTotalContrato:var",
     "ValorTotalContratoFormatado:var", "parcela.ValorFormatado:var", "ValorTotalContratoSemDescontoFormatado:var",
     "ValorTotalMedioMensalContrato:var", "ValorTotalMedioMensalContratoFormatado:var", "DataImpressao:var",
-    "DataImpressaoCompleta:var", "DataImpressaoFormatada:var", "DataValidade:var", "parcela.DataVencimento:var",
-    "gradeHorario.DiaDaSemana:var", "gradeHorario.HorarioFinal:var", "gradeHorario.HorarioInicial:var",
-    "modalidade.DiasHorariosLiberadosParaAcesso:var", "modalidade.DiasLiberadosParaAcesso:var", "modalidade.HorariosLiberadosParaAcesso:var",
-    "modalidade.LimiteAcessos:var", "modalidade.QtdePacoteAulas:var", "modalidade.QtdeSessoesPorSemana:var",
+    "DataImpressaoCompleta:var", "DataImpressaoFormatada:var", "DataValidade:var",
+    "modalidade.DiasLiberadosParaAcesso:var",
     "modalidade.TipoLimiteAcessosPorPeriodo:var", "modalidade.QtdeLimiteAcessosPorPeriodo:var",
     "QuantMaximoDiasSuspensao:var", "QuantMaximoSuspensoes:var",
     "modalidade.GradeHorarios:col", "Modalidades:col", "Parcelas:col", "gradeHorario:loop",
@@ -95,6 +108,12 @@ const VARIABLE_ORDER = {
     "EmailResponsavel:var", "TelefoneResponsavel:var", "CepResponsavel:var", "CidadeResponsavel:var", "BairroResponsavel:var",
     "EnderecoResponsavel:var", "ComplementoEnderecoResponsavel:var", "NumeroEnderecoResponsavel:var", "UfResponsavel:var",
     "TemResponsavel:cond",
+  ],
+  foreach: [
+    "parcela.DataVencimento:var",
+    "gradeHorario.DiaDaSemana:var", "gradeHorario.HorarioFinal:var", "gradeHorario.HorarioInicial:var",
+    "modalidade.DiasHorariosLiberadosParaAcesso:var", "modalidade.HorariosLiberadosParaAcesso:var",
+    "modalidade.LimiteAcessos:var", "modalidade.QtdePacoteAulas:var", "modalidade.QtdeSessoesPorSemana:var",
   ],
 };
 
@@ -279,6 +298,7 @@ function prettifyName(rawName, category) {
 }
 
 function categorizeVariable(rawName) {
+  if (FOREACH_ONLY_VARS.has(rawName)) return "foreach";
   const name = rawName.toLowerCase();
   if (name.includes("cliente")) return "cliente";
   if (name.includes("responsavel")) return "responsavel";
@@ -368,16 +388,7 @@ function renderVariables(schema, filter) {
 
   // Variáveis que continuam no schema/análise, mas ficam ocultas nesta lista de cópia.
   const HIDDEN_VAR_NAMES = new Set([
-    "parcela.DataVencimento",
-    "gradeHorario.DiaDaSemana",
-    "gradeHorario.HorarioFinal",
-    "gradeHorario.HorarioInicial",
-    "modalidade.DiasHorariosLiberadosParaAcesso",
     "modalidade.DiasLiberadosParaAcesso",
-    "modalidade.HorariosLiberadosParaAcesso",
-    "modalidade.LimiteAcessos",
-    "modalidade.QtdePacoteAulas",
-    "modalidade.QtdeSessoesPorSemana",
     "modalidade.TipoLimiteAcessosPorPeriodo",
     "modalidade.QtdeLimiteAcessosPorPeriodo",
     "TemResponsavel",
@@ -456,6 +467,15 @@ function renderVariables(schema, filter) {
       });
     }
 
+    catDiv.append(header);
+
+    if (cat.key === "foreach") {
+      const note = document.createElement("div");
+      note.className = "var-category-note";
+      note.textContent = "⚠ Essas variáveis só funcionam dentro de um bloco <<foreach>> — fora dele, não retornam valor.";
+      catDiv.append(note);
+    }
+
     const grid = document.createElement("div");
     grid.className = "var-category-grid";
 
@@ -504,7 +524,7 @@ function renderVariables(schema, filter) {
       grid.appendChild(pill);
     }
 
-    catDiv.append(header, grid);
+    catDiv.append(grid);
     list.appendChild(catDiv);
   }
 
