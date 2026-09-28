@@ -198,6 +198,24 @@
     return text.slice(index, end).replace(/\s+/g, " ").trim();
   }
 
+  // Descobre o que digitar na busca do Google Docs para chegar ao erro: o trecho da tag
+  // (sem atravessar quebras de paragrafo, que a busca do Docs nao cruza) e quantas vezes
+  // esse mesmo trecho aparece antes dele, para pular as ocorrencias anteriores.
+  // A busca do Docs ignora maiusculas/minusculas por padrao, entao a contagem tambem ignora.
+  function locateInText(text, index, length) {
+    let searchText = text.slice(index, index + Math.min(Math.max(length || 0, 1), 40));
+    const nl = searchText.indexOf("\n");
+    if (nl !== -1) searchText = searchText.slice(0, nl);
+    searchText = searchText.trimEnd();
+    if (!searchText) return {};
+
+    const hay = text.slice(0, index).toLowerCase();
+    const needle = searchText.toLowerCase();
+    let occurrence = 0;
+    for (let i = hay.indexOf(needle); i !== -1; i = hay.indexOf(needle, i + needle.length)) occurrence++;
+    return { searchText, occurrence };
+  }
+
   const WS_RE = /\s/;
   const KEYWORD_RE = /^(if|foreach|image)\b/;
 
@@ -240,7 +258,7 @@
         if (bEnd === -1) {
           const line = lineOf(text, tagStart);
           const snippet = snippetFrom(text, tagStart, 60);
-          problems.push({ line, snippet, message: `Tag "${snippet}" tem um colchete "[" que nunca é fechado com "]".` });
+          problems.push({ line, snippet, index: tagStart, length: 60, message: `Tag "${snippet}" tem um colchete "[" que nunca é fechado com "]".` });
           i = tagStart + openLen;
           continue;
         }
@@ -260,7 +278,7 @@
             let m2 = k2;
             while (m2 < n && text[m2] === ">") m2++;
             const raw = text.slice(tagStart, m2);
-            problems.push({ line: lineOf(text, tagStart), snippet: raw, message: `Tag "${raw}" sem colchetes — o formato correto é "<<[${idMatch[0]}]>>".` });
+            problems.push({ line: lineOf(text, tagStart), snippet: raw, index: tagStart, length: raw.length, message: `Tag "${raw}" sem colchetes — o formato correto é "<<[${idMatch[0]}]>>".` });
             i = m2;
             continue;
           }
@@ -280,7 +298,7 @@
       // Nunca encontrou o ">" de fechamento antes de outro conteudo (texto comum ou outra
       // tag) — a tag ficou "aberta" e mal formada.
       const preview = snippetFrom(text, tagStart, 60);
-      problems.push({ line: lineOf(text, tagStart), snippet: preview, message: `Tag "${preview}" nunca é fechada com ">>" antes de outro conteúdo — verifique se falta o fechamento dessa tag.` });
+      problems.push({ line: lineOf(text, tagStart), snippet: preview, index: tagStart, length: 60, message: `Tag "${preview}" nunca é fechada com ">>" antes de outro conteúdo — verifique se falta o fechamento dessa tag.` });
       if (kind === "if" || kind === "foreach") {
         tags.push({ start: tagStart, end: tagStart + openLen, openLen, closeLen: 0, isClose, kind, inner: null, raw: text.slice(tagStart, Math.min(n, tagStart + 40)), malformed: true });
       }
@@ -302,11 +320,12 @@
       const inner = (tag.inner || "").trim();
       const line = lineOf(text, start);
       const snippet = snippetAround(text, start, tag.end - start);
+      const at = { index: start, length: tag.end - start };
 
       if (malformed) continue; // ja reportada pelo scanTags; so entra na pilha de aninhamento abaixo
 
       if (openLen !== 2 || closeLen !== 2) {
-        problems.push({ line, snippet, message: `Tag "${tag.raw}" está com "<" ou ">" incorretos — o formato correto usa exatamente "<<" no início e ">>" no final, sem variações.` });
+        problems.push({ line, snippet, ...at, message: `Tag "${tag.raw}" está com "<" ou ">" incorretos — o formato correto usa exatamente "<<" no início e ">>" no final, sem variações.` });
         continue;
       }
 
@@ -316,26 +335,26 @@
         const ids = extractIdentifiers(inner);
         const unknown = ids.filter((id) => !validIdentifiers.has(id));
         if (unknown.length) {
-          problems.push({ line, snippet, message: `Condição "<<if [${inner}]>>" usa "${unknown.join('", "')}", que não existe no modelo de referência.` });
+          problems.push({ line, snippet, ...at, message: `Condição "<<if [${inner}]>>" usa "${unknown.join('", "')}", que não existe no modelo de referência.` });
         }
       } else if (kind === "foreach") {
         const mm = inner.match(/^([A-Za-z_][A-Za-z0-9_]*)\s+in\s+([A-Za-z_][A-Za-z0-9_.]*)$/);
         if (!mm) {
-          problems.push({ line, snippet, message: `Laço "<<foreach [${inner}]>>" não segue o formato "item in Colecao".` });
+          problems.push({ line, snippet, ...at, message: `Laço "<<foreach [${inner}]>>" não segue o formato "item in Colecao".` });
         } else {
           const [, itemVar, coll] = mm;
-          if (!schema.loopVars.has(itemVar)) problems.push({ line, snippet, message: `Laço "<<foreach [${inner}]>>" usa o item "${itemVar}", que não existe no modelo de referência.` });
-          if (!schema.loopCollections.has(coll)) problems.push({ line, snippet, message: `Laço "<<foreach [${inner}]>>" usa a coleção "${coll}", que não existe no modelo de referência.` });
+          if (!schema.loopVars.has(itemVar)) problems.push({ line, snippet, ...at, message: `Laço "<<foreach [${inner}]>>" usa o item "${itemVar}", que não existe no modelo de referência.` });
+          if (!schema.loopCollections.has(coll)) problems.push({ line, snippet, ...at, message: `Laço "<<foreach [${inner}]>>" usa a coleção "${coll}", que não existe no modelo de referência.` });
         }
       } else if (kind === "image") {
         if (!schema.imageVariables.has(inner)) {
-          problems.push({ line, snippet, message: `Tag de imagem "<<image [${inner}]>>" não existe no modelo de referência.` });
+          problems.push({ line, snippet, ...at, message: `Tag de imagem "<<image [${inner}]>>" não existe no modelo de referência.` });
         } else if (!isInsideDrawing(ranges, start)) {
-          problems.push({ line, snippet, message: `A variável de imagem "<<image [${inner}]>>" foi encontrada como texto no documento. Ela precisa ser inserida como uma imagem (desenho) no arquivo .docx — se ficar como texto digitado, ocorrerá um erro ao gerar o documento.` });
+          problems.push({ line, snippet, ...at, message: `A variável de imagem "<<image [${inner}]>>" foi encontrada como texto no documento. Ela precisa ser inserida como uma imagem (desenho) no arquivo .docx — se ficar como texto digitado, ocorrerá um erro ao gerar o documento.` });
         }
       } else {
-        if (!inner) problems.push({ line, snippet, message: `Tag "<<...>>" sem nome de variável dentro dos colchetes.` });
-        else if (!schema.variables.has(inner)) problems.push({ line, snippet, message: `Variável "<<[${inner}]>>" não existe no modelo de referência.` });
+        if (!inner) problems.push({ line, snippet, ...at, message: `Tag "<<...>>" sem nome de variável dentro dos colchetes.` });
+        else if (!schema.variables.has(inner)) problems.push({ line, snippet, ...at, message: `Variável "<<[${inner}]>>" não existe no modelo de referência.` });
       }
     }
 
@@ -345,22 +364,25 @@
       const { isClose, kind } = tag;
       const line = lineOf(text, tag.start);
       const snippet = tag.malformed ? tag.raw : snippetAround(text, tag.start, tag.end - tag.start);
+      const at = { index: tag.start, length: tag.end - tag.start };
       if (!isClose) {
-        stack.push({ kind, line, snippet, raw: tag.raw });
+        stack.push({ kind, line, snippet, raw: tag.raw, ...at });
       } else if (stack.length === 0) {
-        problems.push({ line, snippet, message: `Fechamento "<</${kind}>>" sem nenhuma abertura correspondente antes dele.` });
+        problems.push({ line, snippet, ...at, message: `Fechamento "<</${kind}>>" sem nenhuma abertura correspondente antes dele.` });
       } else {
         const top = stack[stack.length - 1];
         if (top.kind !== kind) {
-          problems.push({ line, snippet, message: `Fechamento "<</${kind}>>" encontrado, mas a tag aberta mais recente (linha ~${top.line}: "${top.raw}") é um <<${top.kind}>> — falta fechar essa antes, ou este fechamento deveria ser "<</${top.kind}>>".` });
+          problems.push({ line, snippet, ...at, message: `Fechamento "<</${kind}>>" encontrado, mas a tag aberta mais recente (linha ~${top.line}: "${top.raw}") é um <<${top.kind}>> — falta fechar essa antes, ou este fechamento deveria ser "<</${top.kind}>>".` });
         } else {
           stack.pop();
         }
       }
     }
     for (const remaining of stack) {
-      problems.push({ line: remaining.line, snippet: remaining.snippet, message: `A tag "${remaining.raw}" nunca é fechada com "<</${remaining.kind}>>".` });
+      problems.push({ line: remaining.line, snippet: remaining.snippet, index: remaining.index, length: remaining.length, message: `A tag "${remaining.raw}" nunca é fechada com "<</${remaining.kind}>>".` });
     }
+
+    for (const p of problems) Object.assign(p, locateInText(text, p.index, p.length));
 
     problems.sort((a, b) => a.line - b.line);
     return problems;

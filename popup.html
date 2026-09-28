@@ -390,6 +390,9 @@
   }
   .item:last-child { border-bottom: none; }
   .item:hover { background: rgba(163, 116, 255, 0.06); }
+  .item.clickable { cursor: pointer; }
+  .item.clickable:hover { background: rgba(163, 116, 255, 0.12); }
+  .item.clickable:focus-visible { outline: 2px solid rgba(163, 116, 255, 0.6); outline-offset: -2px; }
   .item .line {
     display: inline-block;
     font-size: 10.5px;
@@ -670,7 +673,7 @@
   </div>
 
   <footer>
-    <small class="note">Analisador de Templates DOCX — v9.4.0</small>
+    <small class="note">Analisador de Templates DOCX — v9.6.0</small>
     <small class="note">Desenvolvido por Maria Julia Talamini</small>
   </footer>
 

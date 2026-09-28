@@ -22,7 +22,156 @@ function setStatus(text) {
   }
 }
 
-function renderProblems(problems) {
+// Roda dentro da aba do Google Docs (mundo MAIN, para que o Docs enxergue o keyCode dos
+// eventos simulados). Abre a busca do Docs, digita o trecho do erro e avança até a
+// ocorrência certa — o Docs rola a página até ela e a destaca.
+// Tenta primeiro a barra de busca (Ctrl/Cmd+F) e, se o Docs ignorar o atalho simulado,
+// abre "Editar > Localizar e substituir" pelo menu. Retorna { ok, via } ou { ok: false, reason }.
+function findInGoogleDocs(searchText, occurrence) {
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const isMac = /Mac/i.test(navigator.platform);
+
+  function fireKey(target, key, code, keyCode, mods = {}) {
+    for (const type of ["keydown", "keypress", "keyup"]) {
+      const ev = new KeyboardEvent(type, { key, code, bubbles: true, cancelable: true, ...mods });
+      Object.defineProperty(ev, "keyCode", { get: () => keyCode });
+      Object.defineProperty(ev, "which", { get: () => keyCode });
+      target.dispatchEvent(ev);
+    }
+  }
+
+  // Os menus do Docs (Closure) reagem a mousedown/mouseup, não só a click.
+  function fireClick(el) {
+    const r = el.getBoundingClientRect();
+    const opts = { bubbles: true, cancelable: true, view: window, button: 0, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 };
+    for (const type of ["mouseover", "mouseenter", "mousedown", "mouseup", "click"]) {
+      el.dispatchEvent(new MouseEvent(type, opts));
+    }
+  }
+
+  // offsetParent é sempre null em elementos position:fixed, por isso usa getClientRects.
+  const isVisible = (el) => !!el && el.getClientRects().length > 0 && getComputedStyle(el).visibility !== "hidden";
+
+  async function waitFor(fn, timeout = 1500) {
+    for (let t = 0; t < timeout; t += 75) {
+      const v = fn();
+      if (v) return v;
+      await sleep(75);
+    }
+    return fn();
+  }
+
+  function typeInto(input, text) {
+    input.focus();
+    input.select();
+    input.value = text;
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+    fireKey(input, "End", "End", 35);
+  }
+
+  const findBarInput = () => [...document.querySelectorAll(".docs-findinput-input")].find(isVisible) || null;
+
+  const findDialog = () =>
+    [...document.querySelectorAll(".docs-findandreplacedialog, [role='dialog']")]
+      .find((d) => isVisible(d) && d.querySelector("input[type='text'], input:not([type])")) || null;
+
+  async function openFindBar() {
+    if (findBarInput()) return findBarInput();
+    const iframe = document.querySelector("iframe.docs-texteventtarget-iframe");
+    const doc = iframe && iframe.contentDocument;
+    const target = doc && (doc.activeElement && doc.activeElement !== doc.body ? doc.activeElement : doc.querySelector("[contenteditable]") || doc.body);
+    if (!target) return null;
+    fireKey(target, "f", "KeyF", 70, isMac ? { metaKey: true } : { ctrlKey: true });
+    return await waitFor(findBarInput, 800);
+  }
+
+  async function openFindDialog() {
+    if (findDialog()) return findDialog();
+    const editMenu = document.getElementById("docs-edit-menu");
+    if (!editMenu) return null;
+    fireClick(editMenu);
+    const item = await waitFor(() =>
+      [...document.querySelectorAll(".goog-menuitem, [role='menuitem']")].find((el) =>
+        isVisible(el) && /localizar e substituir|find and replace|buscar y reemplazar|rechercher et remplacer/i.test(el.textContent)
+      )
+    );
+    if (!item) {
+      fireClick(editMenu); // fecha o menu aberto
+      return null;
+    }
+    fireClick(item);
+    return await waitFor(findDialog);
+  }
+
+  return (async () => {
+    const barInput = await openFindBar();
+    if (barInput) {
+      typeInto(barInput, searchText);
+      await sleep(400);
+      for (let i = 0; i < occurrence; i++) {
+        fireKey(barInput, "Enter", "Enter", 13);
+        await sleep(80);
+      }
+      return { ok: true, via: "findbar" };
+    }
+
+    const dialog = await openFindDialog();
+    if (!dialog) return { ok: false, reason: "não abriu nem a barra de busca (Ctrl+F) nem Editar > Localizar e substituir" };
+
+    const input = dialog.querySelector("input[type='text'], input:not([type])");
+    typeInto(input, searchText);
+    await sleep(400);
+
+    // No "Localizar e substituir", digitar só destaca; o botão "Próximo" é que leva até cada ocorrência.
+    const nextBtn = [...dialog.querySelectorAll("[role='button'], button")].find((b) =>
+      isVisible(b) && /próximo|proximo|next|siguiente|suivant/i.test(b.textContent + " " + (b.getAttribute("aria-label") || ""))
+    );
+    for (let i = 0; i <= occurrence; i++) {
+      if (nextBtn) fireClick(nextBtn);
+      else fireKey(input, "Enter", "Enter", 13);
+      await sleep(80);
+    }
+    return { ok: true, via: "dialog" };
+  })();
+}
+
+async function goToProblemInDocs(docId, problem) {
+  if (!chrome.tabs || !chrome.scripting) throw new Error("Navegador sem suporte para abrir o erro no Docs.");
+
+  const docsTabs = await chrome.tabs.query({ url: "https://docs.google.com/document/*" });
+  let tab = docsTabs.find((t) => extractGoogleDocId(t.url) === docId);
+  if (tab) {
+    await chrome.tabs.update(tab.id, { active: true });
+    await chrome.windows.update(tab.windowId, { focused: true });
+  } else {
+    tab = await chrome.tabs.create({ url: `https://docs.google.com/document/d/${docId}/edit` });
+    await new Promise((resolve) => {
+      const listener = (tabId, info) => {
+        if (tabId === tab.id && info.status === "complete") {
+          chrome.tabs.onUpdated.removeListener(listener);
+          resolve();
+        }
+      };
+      chrome.tabs.onUpdated.addListener(listener);
+    });
+    await new Promise((r) => setTimeout(r, 2500)); // o editor do Docs termina de montar depois do "complete"
+  }
+
+  const [result] = await chrome.scripting.executeScript({
+    target: { tabId: tab.id },
+    world: "MAIN",
+    func: findInGoogleDocs,
+    args: [problem.searchText, problem.occurrence || 0],
+  });
+  const outcome = result && result.result;
+  if (!outcome || !outcome.ok) {
+    console.warn("findInGoogleDocs falhou:", outcome && outcome.reason);
+    throw new Error(`Não foi possível abrir a busca do Docs. Procure manualmente por: ${problem.searchText}`);
+  }
+}
+
+function renderProblems(problems, docId) {
   const summary = $("summary");
   const list = $("issueList");
   list.innerHTML = "";
@@ -51,6 +200,25 @@ function renderProblems(problems) {
     snip.className = "snippet";
     snip.textContent = `"…${p.snippet}…"`;
     div.appendChild(snip);
+
+    if (docId && p.searchText) {
+      div.classList.add("clickable");
+      div.tabIndex = 0;
+      div.title = "Clique para ir até este erro no Google Docs";
+      const go = async () => {
+        setStatus("Abrindo o erro no Google Docs...");
+        try {
+          await goToProblemInDocs(docId, p);
+          setStatus("Concluído.");
+        } catch (err) {
+          console.error(err);
+          setStatus(err.message);
+        }
+      };
+      div.addEventListener("click", go);
+      div.addEventListener("keydown", (e) => { if (e.key === "Enter") go(); });
+    }
+
     list.appendChild(div);
   }
   list.style.display = "block";
@@ -234,8 +402,9 @@ Tipo de modalidade: Agenda – Pacote de aulas
   {
     key: "mensalidade",
     name: "Mensalidade",
-    text: `R$<<[ValorTotalContratoFormatado]>>, <<if [ValorAdesao > 0]>> do qual R$<<[ValorAdesaoFormatado]>> <</if>> <<foreach [parcela in Parcelas]>>
-R$<<[parcela.ValorFormatado]>> <<[parcela.DataVencimento]>>
+    text: `R$<<[ValorTotalContratoFormatado]>>, <<if [ValorAdesao > 0]>> do qual R$<<[ValorAdesaoFormatado]>> se refere a taxa de adesão/matrícula,<</if>> que deverá ser pago conforme a(s) parcela(s) a seguir:
+<<foreach [parcela in Parcelas]>>
+R$<<[parcela.ValorFormatado]>> com vencimento em <<[parcela.DataVencimento]>>
 <</foreach>>`,
   },
 ];
@@ -644,10 +813,10 @@ async function fetchGoogleDocxBuffer(docId) {
 
 let lastGoogleDocId = null;
 
-async function runLintOnBuffer(buf) {
+async function runLintOnBuffer(buf, docId) {
   const schema = DEFAULT_SCHEMA;
   const problems = await TemplateLinter.lintDocxBuffer(buf, schema);
-  renderProblems(problems);
+  renderProblems(problems, docId);
 }
 
 async function handleAnalyzeLink() {
@@ -666,7 +835,7 @@ async function handleAnalyzeLink() {
 
   try {
     const buf = await fetchGoogleDocxBuffer(docId);
-    await runLintOnBuffer(buf);
+    await runLintOnBuffer(buf, docId);
     lastGoogleDocId = docId;
     $("refreshBtn").classList.add("visible");
     setStatus("Concluído.");
@@ -689,7 +858,7 @@ async function handleRefresh() {
 
   try {
     const buf = await fetchGoogleDocxBuffer(lastGoogleDocId);
-    await runLintOnBuffer(buf);
+    await runLintOnBuffer(buf, lastGoogleDocId);
     setStatus("Concluído.");
   } catch (err) {
     console.error(err);
