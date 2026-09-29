@@ -907,7 +907,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   const targetInput = $("targetFile");
   if (targetInput) {
     targetInput.addEventListener("change", () => {
-      $("analyzeBtn").disabled = !targetInput.files[0];
+      const file = targetInput.files[0];
+      $("analyzeBtn").disabled = !file;
+      $("targetFileName").textContent = file ? file.name : "Escolher arquivo...";
+      $("filePick").title = file ? file.name : "";
+      $("filePick").classList.toggle("has-file", !!file);
     });
   }
 
