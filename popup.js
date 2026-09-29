@@ -402,9 +402,9 @@ Tipo de modalidade: Agenda – Pacote de aulas
   {
     key: "mensalidade",
     name: "Mensalidade",
-    text: `R$<<[ValorTotalContratoFormatado]>>, <<if [ValorAdesao > 0]>> do qual R$<<[ValorAdesaoFormatado]>> se refere a taxa de adesão/matrícula,<</if>> que deverá ser pago conforme a(s) parcela(s) a seguir:
+    text: `<<[ValorTotalContratoFormatado]>>, <<if [ValorAdesao > 0]>> do qual <<[ValorAdesaoFormatado]>> se refere a taxa de adesão/matrícula,<</if>> que deverá ser pago conforme a(s) parcela(s) a seguir:
 <<foreach [parcela in Parcelas]>>
-R$<<[parcela.ValorFormatado]>> com vencimento em <<[parcela.DataVencimento]>>
+<<[parcela.ValorFormatado]>> com vencimento em <<[parcela.DataVencimento]>>
 <</foreach>>`,
   },
 ];
