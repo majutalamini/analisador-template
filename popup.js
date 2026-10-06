@@ -779,8 +779,152 @@ function initTabs() {
       const target = tab.dataset.tab;
       $("panel-analyze").classList.toggle("active", target === "analyze");
       $("panel-variables").classList.toggle("active", target === "variables");
+      $("panel-compress").classList.toggle("active", target === "compress");
     });
   });
+}
+
+// ---------- Compressor ----------
+
+let compressDownloadUrl = null;
+
+function formatMB(bytes) {
+  // Mesma conta do Windows Explorer (1 MB = 1024 × 1024 bytes).
+  const mb = bytes / (1024 * 1024);
+  return mb.toLocaleString("pt-BR", { minimumFractionDigits: mb < 10 ? 2 : 1, maximumFractionDigits: mb < 10 ? 2 : 1 }) + " MB";
+}
+
+function setCompressProgress(text, fraction) {
+  $("compressProgress").classList.toggle("hidden", text == null);
+  $("compressProgressText").textContent = text || "";
+  $("compressProgressBar").style.width = `${Math.round(Math.max(0, Math.min(1, fraction || 0)) * 100)}%`;
+}
+
+function resetCompressResult() {
+  if (compressDownloadUrl) {
+    URL.revokeObjectURL(compressDownloadUrl);
+    compressDownloadUrl = null;
+  }
+  $("compressResult").className = "result-card hidden";
+  $("compressSizes").classList.add("hidden");
+  $("compressDetails").textContent = "";
+  $("compressDownload").classList.add("hidden");
+}
+
+function addCompressDetail(text) {
+  const li = document.createElement("li");
+  li.textContent = text;
+  $("compressDetails").appendChild(li);
+}
+
+function plural(n, one, many) {
+  return `${n} ${n === 1 ? one : many}`;
+}
+
+function renderCompressResult(result, fileName) {
+  const card = $("compressResult");
+  const reached = result.status === "ok";
+  card.className = "result-card " + (reached || result.status === "already-small" ? "ok" : "err");
+
+  if (result.status === "already-small") {
+    $("compressResultTitle").textContent = `Este arquivo já tem ${formatMB(result.originalSize)}, dentro do limite de 2 MB. Não precisa comprimir.`;
+    return;
+  }
+
+  $("compressResultTitle").textContent = reached
+    ? "Pronto! O arquivo agora está dentro do limite de 2 MB."
+    : "Não foi possível chegar a 2 MB sem alterar o conteúdo do documento.";
+
+  const saved = 1 - result.finalSize / result.originalSize;
+  $("compressSizeFrom").textContent = formatMB(result.originalSize);
+  $("compressSizeTo").textContent = formatMB(result.finalSize);
+  $("compressSizePct").textContent = `−${Math.max(0, Math.round(saved * 100))}%`;
+  $("compressSizes").classList.remove("hidden");
+
+  const s = result.stats;
+  if (s.imagesCompressed) {
+    let line = `${plural(s.imagesCompressed, "imagem comprimida", "imagens comprimidas")}`;
+    if (s.imagesConverted) line += ` (${plural(s.imagesConverted, "print convertido", "prints convertidos")} de PNG para JPEG)`;
+    addCompressDetail(line);
+  }
+  if (s.fontsRemoved) addCompressDetail(`${plural(s.fontsRemoved, "fonte incorporada removida", "fontes incorporadas removidas")}`);
+  if (s.unusedMediaRemoved) addCompressDetail(`${plural(s.unusedMediaRemoved, "imagem não usada removida", "imagens não usadas removidas")}`);
+  if (s.thumbnailRemoved) addCompressDetail("Miniatura de pré-visualização removida");
+
+  if (!reached && result.breakdown) {
+    const b = result.breakdown;
+    const others = Math.max(0, result.finalSize - b.imagens - b.fontes - b.objetos);
+    const heavy = [
+      ["fontes incorporadas", b.fontes],
+      ["imagens", b.imagens],
+      ["objetos incorporados", b.objetos],
+      ["texto e formatação", others],
+    ].filter(([, size]) => size >= 10 * 1024).sort((x, y) => y[1] - x[1]);
+    addCompressDetail(`O que ainda pesa: ${heavy.map(([name, size]) => `${name} ${formatMB(size)}`).join(", ")}.`);
+    if (b.imagensNaoComprimiveis > 0) {
+      addCompressDetail(`${formatMB(b.imagensNaoComprimiveis)} são imagens em formatos que o navegador não consegue comprimir (EMF, WMF, TIFF ou GIF). Salvar essas imagens como PNG ou JPEG no Word resolve.`);
+    }
+    if (b.fontesPresentes && !s.fontsRemoved) {
+      addCompressDetail('O documento tem fontes incorporadas. Marque "Remover fontes incorporadas" e comprima de novo.');
+    }
+    if (b.objetos > 0) {
+      addCompressDetail("Há objetos incorporados (planilhas, PDFs etc.). Remova-os no Word se não forem necessários.");
+    }
+  }
+
+  // Sem ganho real (menos de 1%), não oferece um arquivo praticamente igual ao original.
+  if (result.blob && (reached || result.finalSize < result.originalSize * 0.99)) {
+    compressDownloadUrl = URL.createObjectURL(result.blob);
+    const link = $("compressDownload");
+    link.href = compressDownloadUrl;
+    link.download = fileName.replace(/\.docx$/i, "") + "-comprimido.docx";
+    $("compressDownloadLabel").textContent = reached
+      ? "Baixar arquivo comprimido"
+      : `Baixar mesmo assim (${formatMB(result.finalSize)})`;
+    link.classList.remove("hidden");
+  }
+}
+
+async function handleCompress() {
+  const file = $("compressFile").files[0];
+  if (!file) return;
+
+  const btn = $("compressBtn");
+  btn.disabled = true;
+  $("compressFile").disabled = true;
+  resetCompressResult();
+  setCompressProgress("Lendo o arquivo...", 0.01);
+
+  try {
+    const buf = await fileToArrayBuffer(file);
+    const result = await DocxCompressor.compress(buf, {
+      allowFontRemoval: $("allowFontRemoval").checked,
+      onProgress: ({ text, fraction }) => setCompressProgress(text, fraction),
+    });
+    setCompressProgress(null);
+    renderCompressResult(result, file.name);
+  } catch (err) {
+    console.error(err);
+    setCompressProgress(null);
+    $("compressResult").className = "result-card err";
+    $("compressResultTitle").textContent = "Erro ao comprimir: " + err.message;
+  } finally {
+    btn.disabled = false;
+    $("compressFile").disabled = false;
+  }
+}
+
+function initCompressor() {
+  const input = $("compressFile");
+  input.addEventListener("change", () => {
+    const file = input.files[0];
+    $("compressBtn").disabled = !file;
+    $("compressFileName").textContent = file ? `${file.name} (${formatMB(file.size)})` : "Escolher arquivo...";
+    $("compressFilePick").title = file ? file.name : "";
+    $("compressFilePick").classList.toggle("has-file", !!file);
+    resetCompressResult();
+  });
+  $("compressBtn").addEventListener("click", handleCompress);
 }
 
 function extractGoogleDocId(url) {
@@ -895,6 +1039,7 @@ async function handleAnalyze() {
 
 document.addEventListener("DOMContentLoaded", async () => {
   initTabs();
+  initCompressor();
 
   try {
     await loadDefaultSchema();

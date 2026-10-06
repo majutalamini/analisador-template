@@ -90,15 +90,17 @@
   }
   .tab {
     flex: 1;
+    min-width: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: 7px;
     background: none;
     border: none;
     color: var(--muted);
-    padding: 14px 14px 12px;
-    font-size: 14.5px;
+    padding: 14px 6px 12px;
+    font-size: 14px;
+    white-space: nowrap;
     font-weight: 700;
     cursor: pointer;
     border-bottom: 3px solid transparent;
@@ -107,6 +109,11 @@
     border-radius: 8px 8px 0 0;
   }
   .tab svg { flex: none; }
+  /* Com três abas, em painéis estreitos os ícones saem para os nomes caberem inteiros. */
+  @media (max-width: 400px) {
+    .tab { font-size: 13px; }
+    .tab svg { display: none; }
+  }
   .tab:hover { color: var(--text); background: rgba(163, 116, 255, 0.07); }
   .tab.active { color: var(--accent); border-bottom-color: var(--accent); background: rgba(163, 116, 255, 0.10); }
 
@@ -677,6 +684,117 @@
     font-style: italic;
   }
 
+  /* Compressor panel */
+  #panel-compress {
+    padding: 16px 18px 18px;
+    gap: 14px;
+  }
+  .limit-badge {
+    flex: none;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 10px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    white-space: nowrap;
+  }
+  .opt-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 11.5px;
+    color: var(--muted);
+    line-height: 1.4;
+    cursor: pointer;
+  }
+  .opt-row input {
+    flex: none;
+    margin: 1px 0 0;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+  .opt-row strong { color: var(--text); font-weight: 600; }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: 11px 18px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+    cursor: pointer;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    text-decoration: none;
+    box-shadow: 0 6px 18px rgba(124, 58, 237, 0.35);
+    transition: transform 0.12s ease, box-shadow 0.12s ease, opacity 0.12s ease;
+  }
+  .btn-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 8px 22px rgba(124, 58, 237, 0.5); }
+  .btn-primary:active:not(:disabled) { transform: translateY(0); }
+  .btn-primary:disabled { opacity: 0.45; cursor: default; box-shadow: none; }
+
+  .progress-wrap { display: flex; flex-direction: column; gap: 7px; }
+  .progress-text { font-size: 12px; color: var(--muted); }
+  .progress-track {
+    height: 6px;
+    border-radius: 6px;
+    background: var(--panel);
+    overflow: hidden;
+  }
+  .progress-bar {
+    height: 100%;
+    width: 0%;
+    border-radius: 6px;
+    background: linear-gradient(90deg, var(--accent-2), var(--accent));
+    transition: width 0.2s ease;
+  }
+
+  .result-card {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    border-radius: 12px;
+    padding: 14px;
+    border: 1px solid var(--border);
+    background: rgba(0, 0, 0, 0.12);
+  }
+  .result-card.ok { background: var(--ok-soft); border-color: rgba(61, 220, 151, 0.3); }
+  .result-card.err { background: var(--err-soft); border-color: rgba(255, 107, 139, 0.3); }
+  .result-title { font-size: 13px; font-weight: 700; }
+  .result-card.ok .result-title { color: var(--ok); }
+  .result-card.err .result-title { color: var(--err); }
+  .size-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 18px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  .size-row .from { color: var(--muted); text-decoration: line-through; text-decoration-thickness: 1px; font-weight: 600; }
+  .size-row .arrow { color: var(--muted); font-size: 14px; }
+  .size-row .pct {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.2);
+  }
+  .result-details {
+    margin: 0;
+    padding-left: 18px;
+    font-size: 11.5px;
+    color: var(--text);
+    line-height: 1.55;
+  }
+  .result-details li::marker { color: var(--muted); }
+
   footer {
     margin-top: auto;
     padding: 12px 18px;
@@ -702,6 +820,10 @@
     <button class="tab" data-tab="variables">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H7a2 2 0 0 0-2 2v5a2 2 0 0 1-2 2 2 2 0 0 1 2 2v5a2 2 0 0 0 2 2h1"/><path d="M16 21h1a2 2 0 0 0 2-2v-5a2 2 0 0 1 2-2 2 2 0 0 1-2-2V5a2 2 0 0 0-2-2h-1"/></svg>
       Variáveis
+    </button>
+    <button class="tab" data-tab="compress">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+      Compressor
     </button>
   </div>
 
@@ -769,13 +891,66 @@
     </div>
   </div>
 
+  <div id="panel-compress" class="panel-content">
+    <section class="source-card primary">
+      <div class="source-head">
+        <span class="source-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+        </span>
+        <div class="source-text">
+          <div class="source-title">
+            <span class="nowrap">Comprimir .docx</span>
+            <span class="limit-badge">até 2 MB</span>
+          </div>
+          <div class="source-sub">Reduz as imagens do documento. O texto e a formatação não mudam, e o arquivo não sai do seu computador.</div>
+        </div>
+      </div>
+
+      <div class="file-row">
+        <label class="file-pick" id="compressFilePick" for="compressFile">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <span id="compressFileName">Escolher arquivo...</span>
+        </label>
+        <input type="file" id="compressFile" class="sr-only" accept=".docx" />
+      </div>
+
+      <label class="opt-row">
+        <input type="checkbox" id="allowFontRemoval" />
+        <span><strong>Remover fontes incorporadas, se necessário.</strong> Só vale para documentos com fontes embutidas; as letras podem mudar de aparência.</span>
+      </label>
+
+      <button id="compressBtn" class="btn-primary" disabled>Comprimir para até 2 MB</button>
+    </section>
+
+    <div id="compressProgress" class="progress-wrap hidden">
+      <div class="progress-text" id="compressProgressText"></div>
+      <div class="progress-track"><div class="progress-bar" id="compressProgressBar"></div></div>
+    </div>
+
+    <div id="compressResult" class="result-card hidden">
+      <div class="result-title" id="compressResultTitle"></div>
+      <div class="size-row hidden" id="compressSizes">
+        <span class="from" id="compressSizeFrom"></span>
+        <span class="arrow">→</span>
+        <span id="compressSizeTo"></span>
+        <span class="pct" id="compressSizePct"></span>
+      </div>
+      <ul class="result-details" id="compressDetails"></ul>
+      <a id="compressDownload" class="btn-primary hidden" href="#">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        <span id="compressDownloadLabel">Baixar arquivo comprimido</span>
+      </a>
+    </div>
+  </div>
+
   <footer>
-    <small class="note">Analisador de Templates DOCX — v9.7.1</small>
+    <small class="note">Analisador de Templates DOCX — v9.8.0</small>
     <small class="note">Desenvolvido por Maria Julia Talamini</small>
   </footer>
 
   <script src="jszip.min.js"></script>
   <script src="linter.browser.js"></script>
+  <script src="compressor.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>
