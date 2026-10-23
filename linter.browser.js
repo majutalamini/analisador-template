@@ -12,8 +12,14 @@
       .replace(/&amp;/g, "&");
   }
 
+  // Fim de paragrafo (Enter) e quebra de linha manual (Shift+Enter, <w:br/> / <w:cr/>) viram
+  // "\n" no texto extraido - assim uma tag partida em duas linhas pode ser detectada.
+  function markLineBreaks(documentXml) {
+    return documentXml.replace(/<\/w:p>|<w:(?:br|cr)\b[^>]*\/>/g, "\u2029");
+  }
+
   function extractLogicalText(documentXml) {
-    const withBreaks = documentXml.replace(/<\/w:p>/g, "\u2029");
+    const withBreaks = markLineBreaks(documentXml);
     let out = "";
     const re = /<w:t\b[^>]*>([\s\S]*?)<\/w:t>|\u2029/g;
     let m;
@@ -27,26 +33,117 @@
   // Como extractLogicalText, mas tambem marca quais trechos do texto extraido vem de
   // dentro de uma caixa de texto de um desenho/forma (<w:txbxContent>) - usado para nao
   // acusar "<<image [...]>>" como texto solto quando ele ja esta dentro de um desenho.
+  // Tambem registra em qual "container" (celula de tabela ou caixa de texto) cada trecho
+  // esta, para validar que a abertura e o fechamento de um bloco <<if>>/<<foreach>> ficam
+  // no mesmo lugar - o texto extraido e "achatado" e, sem isso, um bloco que comeca em uma
+  // celula e termina em outra parece valido.
   function extractLogicalTextWithDrawingRanges(documentXml) {
-    const withBreaks = documentXml.replace(/<\/w:p>/g, "\u2029");
+    const withBreaks = markLineBreaks(documentXml);
     let out = "";
     const drawingRanges = [];
+    const containers = [];      // celulas e caixas de texto, na ordem em que aparecem
+    const containerRanges = []; // [inicio, fim, container] de cada trecho do texto extraido
+    const containerStack = [];
+    const tableStack = [];
+    let tableCount = 0;
     let depth = 0;
-    const re = /<w:txbxContent\b[^>]*>|<\/w:txbxContent>|<w:t\b[^>]*>([\s\S]*?)<\/w:t>|\u2029/g;
+
+    const pushRange = (start, end) => {
+      const c = containerStack[containerStack.length - 1] || null;
+      const last = containerRanges[containerRanges.length - 1];
+      if (last && last[2] === c && last[1] === start) last[1] = end;
+      else containerRanges.push([start, end, c]);
+    };
+
+    const re = /<w:txbxContent\b[^>]*>|<\/w:txbxContent>|<w:tbl\b[^>]*>|<\/w:tbl>|<w:tr\b[^>]*>|<\/w:tr>|<w:tc\b[^>]*>|<\/w:tc>|<w:t\b[^>]*>([\s\S]*?)<\/w:t>|\u2029/g;
     let m;
     while ((m = re.exec(withBreaks))) {
-      if (m[0] === "\u2029") { out += "\n"; continue; }
-      if (m[0].startsWith("<w:txbxContent")) { depth++; continue; }
-      if (m[0] === "</w:txbxContent>") { depth = Math.max(0, depth - 1); continue; }
+      const tok = m[0];
+      if (tok === "\u2029") { pushRange(out.length, out.length + 1); out += "\n"; continue; }
+      if (tok.startsWith("<w:txbxContent")) {
+        depth++;
+        const c = { type: "textbox", textStart: out.length, textEnd: null };
+        containers.push(c);
+        containerStack.push(c);
+        continue;
+      }
+      if (tok === "</w:txbxContent>") {
+        depth = Math.max(0, depth - 1);
+        const c = containerStack.pop();
+        if (c) c.textEnd = out.length;
+        continue;
+      }
+      if (tok.startsWith("<w:tbl")) { tableStack.push({ id: ++tableCount, rowIndex: -1, cells: [] }); continue; }
+      if (tok === "</w:tbl>") { tableStack.pop(); continue; }
+      if (tok.startsWith("<w:tr")) {
+        const t = tableStack[tableStack.length - 1];
+        if (t) { t.rowIndex++; t.cells = []; }
+        continue;
+      }
+      if (tok === "</w:tr>") {
+        const t = tableStack[tableStack.length - 1];
+        if (t && t.cells.length) t.cells[t.cells.length - 1].isLastCell = true;
+        continue;
+      }
+      if (tok.startsWith("<w:tc")) {
+        const t = tableStack[tableStack.length - 1];
+        const c = {
+          type: "cell",
+          tableId: t ? t.id : 0,
+          rowIndex: t ? t.rowIndex : 0,
+          cellIndex: t ? t.cells.length : 0,
+          isLastCell: false,
+          textStart: out.length,
+          textEnd: null,
+        };
+        if (t) t.cells.push(c);
+        containers.push(c);
+        containerStack.push(c);
+        continue;
+      }
+      if (tok === "</w:tc>") {
+        const c = containerStack.pop();
+        if (c) c.textEnd = out.length;
+        continue;
+      }
       const start = out.length;
       out += decodeXmlEntities(m[1]);
       if (depth > 0) drawingRanges.push([start, out.length]);
+      if (out.length > start) pushRange(start, out.length);
     }
-    return { text: out, drawingRanges };
+    return { text: out, drawingRanges, containerRanges };
   }
 
   function isInsideDrawing(drawingRanges, index) {
     return drawingRanges.some(([start, end]) => index >= start && index < end);
+  }
+
+  // Container (celula de tabela / caixa de texto) em que esta o caractere `index`, ou null
+  // quando esta no corpo do documento, fora de qualquer tabela.
+  function containerAt(containerRanges, index) {
+    for (const [start, end, c] of containerRanges) {
+      if (index >= start && index < end) return c;
+    }
+    return null;
+  }
+
+  // O motor de templates so aceita um bloco <<if>>/<<foreach>> cuja abertura e fechamento
+  // estejam no mesmo container (mesma celula, mesma caixa de texto ou ambos fora de tabela).
+  // Excecao: bloco de linhas de tabela - abertura no inicio da primeira celula de uma linha e
+  // fechamento no fim da ultima celula da mesma linha ou de uma linha seguinte.
+  function isValidBlockScope(text, containerRanges, openTag, closeTag) {
+    const a = containerAt(containerRanges, openTag.start);
+    const b = containerAt(containerRanges, closeTag.start);
+    if (a === b) return true;
+    return !!(
+      a && b && a.type === "cell" && b.type === "cell" &&
+      a.tableId === b.tableId &&
+      a.cellIndex === 0 && b.isLastCell &&
+      b.rowIndex >= a.rowIndex &&
+      b.textEnd != null &&
+      !text.slice(a.textStart, openTag.start).trim() &&
+      !text.slice(closeTag.end, b.textEnd).trim()
+    );
   }
 
   function extractIdentifiers(expr) {
@@ -141,8 +238,8 @@
       const file = zip.file(part.name);
       if (!file) continue;
       const xml = await file.async("string");
-      const { text, drawingRanges } = extractLogicalTextWithDrawingRanges(xml);
-      out.push({ part, text, drawingRanges });
+      const { text, drawingRanges, containerRanges } = extractLogicalTextWithDrawingRanges(xml);
+      out.push({ part, text, drawingRanges, containerRanges });
     }
     return out;
   }
@@ -290,7 +387,14 @@
         while (m2 < n && text[m2] === ">") m2++;
         const closeLen = m2 - k;
         const tagEnd = m2;
-        tags.push({ start: tagStart, end: tagEnd, openLen, closeLen, isClose, kind, inner, raw: text.slice(tagStart, tagEnd) });
+        const rawText = text.slice(tagStart, tagEnd);
+        const raw = rawText.replace(/\s+/g, " ");
+        // O motor de templates nao aceita uma tag partida em mais de uma linha, ex.:
+        // "<<if" em uma linha e "[TemResponsavel > 0]>>" na seguinte.
+        if (rawText.includes("\n")) {
+          problems.push({ line: lineOf(text, tagStart), snippet: raw, index: tagStart, length: rawText.length, message: `A tag "${raw}" está quebrada em linhas. É necessário inserir a tag inteira na mesma linha.` });
+        }
+        tags.push({ start: tagStart, end: tagEnd, openLen, closeLen, isClose, kind, inner, raw });
         i = tagEnd;
         continue;
       }
@@ -307,9 +411,10 @@
     return tags;
   }
 
-  function lintText(text, rawSchema, drawingRanges) {
+  function lintText(text, rawSchema, drawingRanges, containerRanges) {
     const schema = normalizeSchema(rawSchema);
     const ranges = drawingRanges || [];
+    const scopes = containerRanges || [];
     const problems = [];
     const validIdentifiers = new Set([...schema.variables, ...schema.conditionFields, ...schema.loopVars, ...schema.loopCollections]);
 
@@ -366,7 +471,7 @@
       const snippet = tag.malformed ? tag.raw : snippetAround(text, tag.start, tag.end - tag.start);
       const at = { index: tag.start, length: tag.end - tag.start };
       if (!isClose) {
-        stack.push({ kind, line, snippet, raw: tag.raw, ...at });
+        stack.push({ kind, line, snippet, raw: tag.raw, tag, ...at });
       } else if (stack.length === 0) {
         problems.push({ line, snippet, ...at, message: `Fechamento "<</${kind}>>" sem nenhuma abertura correspondente antes dele.` });
       } else {
@@ -375,11 +480,19 @@
           problems.push({ line, snippet, ...at, message: `Fechamento "<</${kind}>>" encontrado, mas a tag aberta mais recente (linha ~${top.line}: "${top.raw}") é um <<${top.kind}>> — falta fechar essa antes, ou este fechamento deveria ser "<</${top.kind}>>".` });
         } else {
           stack.pop();
+          if (!top.tag.malformed && !isValidBlockScope(text, scopes, top.tag, tag)) {
+            const a = containerAt(scopes, top.tag.start);
+            const b = containerAt(scopes, tag.start);
+            const where = a && b && a.type === "cell" && b.type === "cell"
+              ? "em células diferentes da tabela. Coloque os dois na mesma célula."
+              : "em lugares diferentes (dentro e fora de uma tabela ou caixa de texto). Coloque os dois no mesmo lugar.";
+            problems.push({ line: top.line, snippet: top.snippet, index: top.index, length: top.length, message: `A tag "${top.raw}" e o seu "<</${kind}>>" estão ${where}` });
+          }
         }
       }
     }
     for (const remaining of stack) {
-      problems.push({ line: remaining.line, snippet: remaining.snippet, index: remaining.index, length: remaining.length, message: `A tag "${remaining.raw}" nunca é fechada com "<</${remaining.kind}>>".` });
+      problems.push({ line: remaining.line, snippet: remaining.snippet, index: remaining.index, length: remaining.length, message: `A tag "${remaining.raw}" foi aberta, mas não tem o "<</${remaining.kind}>>" correspondente. Insira "<</${remaining.kind}>>" no ponto onde o bloco deve terminar.` });
     }
 
     for (const p of problems) Object.assign(p, locateInText(text, p.index, p.length));
@@ -394,8 +507,8 @@
     const chunks = await extractLogicalTextFromPartsWithDrawingRanges(zip, parts);
 
     const problems = [];
-    for (const { part, text, drawingRanges } of chunks) {
-      const partProblems = lintText(text, schema, drawingRanges);
+    for (const { part, text, drawingRanges, containerRanges } of chunks) {
+      const partProblems = lintText(text, schema, drawingRanges, containerRanges);
       for (const p of partProblems) {
         if (part.label) p.part = part.label;
         problems.push(p);
