@@ -390,8 +390,9 @@
         const rawText = text.slice(tagStart, tagEnd);
         const raw = rawText.replace(/\s+/g, " ");
         // O motor de templates nao aceita uma tag partida em mais de uma linha, ex.:
-        // "<<if" em uma linha e "[TemResponsavel > 0]>>" na seguinte.
-        if (rawText.includes("\n")) {
+        // "<<if" em uma linha e "[TemResponsavel > 0]>>" na seguinte. Tags de imagem ficam
+        // dentro de um desenho (caixa de texto), onde a quebra de linha nao causa erro.
+        if (rawText.includes("\n") && kind !== "image") {
           problems.push({ line: lineOf(text, tagStart), snippet: raw, index: tagStart, length: rawText.length, message: `A tag "${raw}" está quebrada em linhas. É necessário inserir a tag inteira na mesma linha.` });
         }
         tags.push({ start: tagStart, end: tagEnd, openLen, closeLen, isClose, kind, inner, raw });
