@@ -5,83 +5,202 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Analisador de Templates</title>
 <meta name="description" content="Confere se as tags e variáveis de um template .docx estão corretas e comprime o arquivo para até 2 MB.">
-<link rel="icon" href="compartilhado/icons/icon32.png">
+<meta name="color-scheme" content="light dark">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400..800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
+<a class="pular" href="#ferramenta">Pular para o analisador</a>
+
+<!-- ============ CABEÇALHO ============ -->
 <header class="topo">
-  <img src="compartilhado/icons/icon48.png" alt="">
-  <div class="marca"><strong>Analisador de Templates</strong><span>Next Fit · correção de templates de contrato</span></div>
+  <div class="wrap topo-in">
+    <a class="marca" href="#inicio">
+      <img src="img/logo.png" alt="" width="34" height="34">
+      <span>Analisador de templates</span>
+    </a>
+    <nav class="menu" aria-label="Seções da página">
+      <a href="#como-funciona">Como funciona</a>
+      <a href="#ferramenta">Analisador</a>
+      <a href="#duvidas">Dúvidas</a>
+    </nav>
+    <a class="btn pri sm" href="#ferramenta" data-tab="analisar">Analisar template</a>
+  </div>
 </header>
 
-<main class="page">
-  <div class="head">
-    <h1>Analisador de templates (DOCX)</h1>
-    <div class="actions">
-      <button class="btn out" data-act="hist" aria-expanded="false"><span data-ico="hist"></span>Histórico</button>
+<main>
+
+<!-- ============ ABERTURA ============ -->
+<section class="hero" id="inicio">
+  <div class="wrap hero-in">
+    <div class="hero-tx">
+      <p class="sobre">Next Fit · templates de contrato</p>
+      <h1>Encontre os erros do template de contrato antes de usá-lo no sistema</h1>
+      <p class="hero-lead">O analisador lê o seu documento e aponta cada variável, condição ou laço que o Next Fit não vai reconhecer, com o trecho e a linha para você corrigir.</p>
+      <div class="hero-cta">
+        <a class="btn pri lg" href="#ferramenta" data-tab="analisar">Analisar um template</a>
+        <a class="btn out lg" href="#ferramenta" data-tab="variaveis">Ver variáveis aceitas</a>
+      </div>
+      <ul class="hero-fatos">
+        <li><span data-ico="check" data-tam="16"></span>Aceita link do Google Docs ou arquivo .docx</li>
+        <li><span data-ico="check" data-tam="16"></span>O arquivo .docx não sai do seu computador</li>
+      </ul>
+    </div>
+
+    <figure class="exemplo" aria-label="Exemplo de resultado de uma análise">
+      <div class="ex-cab">
+        <div>
+          <strong>Resultado da análise</strong>
+          <span>contrato-plano-anual.docx</span>
+        </div>
+        <span class="chip c-er">2 problemas</span>
+      </div>
+      <div class="ex-item">
+        <span class="tipo">ERRO</span>
+        <div>
+          <p>Variável "&lt;&lt;[NomeClient]&gt;&gt;" não existe no modelo de referência.</p>
+          <code class="ex-trecho">"…eu, <mark>&lt;&lt;[NomeClient]&gt;&gt;</mark>, portador do CPF…"</code>
+          <span class="ex-onde">Linha ~12</span>
+        </div>
+      </div>
+      <div class="ex-item">
+        <span class="tipo">ERRO</span>
+        <div>
+          <p>Fechamento "&lt;&lt;/if&gt;&gt;" sem nenhuma abertura correspondente antes dele.</p>
+          <code class="ex-trecho">"…pagamento à vista. <mark>&lt;&lt;/if&gt;&gt;</mark> As parcelas…"</code>
+          <span class="ex-onde">Linha ~31</span>
+        </div>
+      </div>
+      <figcaption>Exemplo do que aparece depois da análise</figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- ============ COMO FUNCIONA ============ -->
+<section class="secao" id="como-funciona">
+  <div class="wrap">
+    <div class="sec-cab">
+      <h2 class="h-sec">Como funciona</h2>
+      <p class="sec-lead">Três passos, do envio à correção. Não é preciso instalar nada.</p>
+    </div>
+
+    <ol class="passos">
+      <li>
+        <span class="num" aria-hidden="true">1</span>
+        <h3>Envie o template</h3>
+        <p>Cole o link do Google Docs ou arraste o arquivo .docx. O documento do Google precisa estar compartilhado como "Qualquer pessoa com o link".</p>
+      </li>
+      <li>
+        <span class="num" aria-hidden="true">2</span>
+        <h3>O analisador confere cada tag</h3>
+        <p>Todas as tags do texto são comparadas com o modelo de referência do sistema, o mesmo que define as variáveis aceitas.</p>
+      </li>
+      <li>
+        <span class="num" aria-hidden="true">3</span>
+        <h3>Corrija pelo trecho indicado</h3>
+        <p>Cada problema vem com a mensagem, o trecho e a linha. Com o link do Google Docs, "Ir para o trecho" copia o texto e abre o documento: é só Ctrl+F e colar.</p>
+      </li>
+    </ol>
+
+    <div class="confere">
+      <h3>O que é verificado</h3>
+      <ul>
+        <li><code>&lt;&lt;[Variavel]&gt;&gt;</code><span>Variáveis com nome errado ou que não existem no sistema</span></li>
+        <li><code>&lt;&lt;if [...]&gt;&gt;</code><span>Condições que usam campos inexistentes</span></li>
+        <li><code>&lt;&lt;foreach [...]&gt;&gt;</code><span>Laços com item ou coleção inválidos</span></li>
+        <li><code>&lt;&lt;/if&gt;&gt;</code><span>Blocos abertos sem fechamento, ou fechados no lugar errado</span></li>
+        <li><code>&lt;&lt;image [...]&gt;&gt;</code><span>Imagens digitadas como texto em vez de inseridas como imagem</span></li>
+      </ul>
     </div>
   </div>
-  <div class="hist" hidden></div>
+</section>
 
-  <section class="card">
-    <div class="tabs" role="tablist" aria-label="Seções do analisador">
-      <button class="tab" role="tab" id="tab-analisar" data-tab="analisar" aria-controls="painel-analisar" aria-selected="true">Analisar</button>
-      <button class="tab" role="tab" id="tab-variaveis" data-tab="variaveis" aria-controls="painel-variaveis" aria-selected="false">Variáveis</button>
-      <button class="tab" role="tab" id="tab-personalizacao" data-tab="personalizacao" aria-controls="painel-personalizacao" aria-selected="false">Personalização</button>
-      <button class="tab" role="tab" id="tab-compressor" data-tab="compressor" aria-controls="painel-compressor" aria-selected="false">Compressor</button>
+<!-- ============ FERRAMENTA ============ -->
+<section class="secao ferramenta" id="ferramenta">
+  <div class="wrap">
+    <div class="sec-cab linha">
+      <div>
+        <h2 class="h-sec">Analisador</h2>
+        <p class="sec-lead">Escolha o que você quer fazer.</p>
+      </div>
+      <button class="btn ghost" data-act="hist" aria-expanded="false"><span data-ico="hist" data-tam="18"></span>Histórico de análises</button>
+    </div>
+
+    <div class="hist" hidden></div>
+
+    <div class="tabs" role="tablist" aria-label="Funções do analisador">
+      <button class="tab" role="tab" id="tab-analisar" data-tab="analisar" aria-controls="painel-analisar" aria-selected="true">
+        <span class="tab-ic" data-ico="lupa" data-tam="22"></span>
+        <span class="tab-tx"><span class="tab-t">Analisar</span><span class="tab-d">Encontrar erros no template</span></span>
+      </button>
+      <button class="tab" role="tab" id="tab-variaveis" data-tab="variaveis" aria-controls="painel-variaveis" aria-selected="false">
+        <span class="tab-ic" data-ico="copy" data-tam="22"></span>
+        <span class="tab-tx"><span class="tab-t">Variáveis</span><span class="tab-d">Copiar variáveis aceitas</span></span>
+      </button>
+      <button class="tab" role="tab" id="tab-personalizacao" data-tab="personalizacao" aria-controls="painel-personalizacao" aria-selected="false">
+        <span class="tab-ic" data-ico="doc" data-tam="22"></span>
+        <span class="tab-tx"><span class="tab-t">Personalização</span><span class="tab-d">Ajustar o modelo de referência</span></span>
+      </button>
+      <button class="tab" role="tab" id="tab-compressor" data-tab="compressor" aria-controls="painel-compressor" aria-selected="false">
+        <span class="tab-ic" data-ico="comp" data-tam="22"></span>
+        <span class="tab-tx"><span class="tab-t">Compressor</span><span class="tab-d">Reduzir o .docx para até 2 MB</span></span>
+      </button>
     </div>
 
     <!-- ANALISAR -->
     <div class="panel" id="painel-analisar" role="tabpanel" aria-labelledby="tab-analisar" data-panel="analisar">
-      <p class="lead">Envie o template do contrato para conferir, linha por linha, se as tags e variáveis estão corretas. Escolha uma das duas formas:</p>
-      <div class="row">
+      <p class="lead">Envie o template por uma das duas opções. O resultado aparece logo abaixo.</p>
+
+      <div class="fontes">
         <div class="box hl">
           <div class="bh">
-            <div class="ic" data-ico="link"></div>
-            <div>
-              <div class="tt">
-                <h2>Link do Google Docs</h2>
-                <span class="info" tabindex="0" aria-label="Atenção: o documento precisa estar público"><span data-ico="alerta" data-tam="16"></span><span class="dica">O documento precisa estar compartilhado como público ("Qualquer pessoa com o link pode visualizar") para que a análise funcione.</span></span>
-                <span class="badge b-ok">RECOMENDADO</span>
-              </div>
-              <span class="muted">Em cada erro, use "Ir para o trecho" para abrir o documento e achar o ponto certo.</span>
+            <span class="ic" data-ico="link" data-tam="20"></span>
+            <div class="tt">
+              <h3>Pelo link do Google Docs</h3>
+              <span class="badge b-ok">Recomendado</span>
             </div>
           </div>
-          <div>
+          <div class="campo">
             <label class="lbl" for="gd">Link do documento</label>
             <input class="in" id="gd" type="url" placeholder="https://docs.google.com/document/d/..." autocomplete="off" spellcheck="false">
+            <p class="aviso"><span data-ico="alerta" data-tam="16"></span><span>O documento precisa estar compartilhado como "Qualquer pessoa com o link pode visualizar".</span></p>
           </div>
           <div class="acts">
             <button class="btn pri" data-act="gdocs" disabled>Analisar link</button>
-            <button class="icon" data-act="atualizar" aria-label="Buscar alterações mais recentes do documento" title="Buscar alterações mais recentes do documento" hidden><span data-ico="refresh" data-tam="20"></span></button>
-            <a class="lnk" href="https://docs.google.com/document/u/0/?tgif=d" target="_blank" rel="noopener noreferrer">Abrir Google Docs <span data-ico="ext" data-tam="16"></span></a>
+            <button class="icon" data-act="atualizar" aria-label="Buscar alterações mais recentes do documento" title="Buscar alterações mais recentes do documento" hidden><span data-ico="refresh" data-tam="18"></span></button>
+            <a class="lnk" href="https://docs.google.com/document/u/0/?tgif=d" target="_blank" rel="noopener noreferrer">Abrir Google Docs <span data-ico="ext" data-tam="14"></span></a>
           </div>
           <p class="msg" data-msg="gdocs" role="status" hidden></p>
         </div>
-        <div class="ou"><span>OU</span></div>
+
+        <div class="ou" aria-hidden="true"><span>ou</span></div>
+
         <div class="box">
-          <div class="bh" style="align-items:center">
-            <div class="ic soft" data-ico="doc"></div>
-            <h2 style="font-size:18px">Arquivo .docx do computador</h2>
+          <div class="bh">
+            <span class="ic soft" data-ico="doc" data-tam="20"></span>
+            <div class="tt"><h3>Pelo arquivo .docx</h3></div>
           </div>
           <label class="drop" data-drop="analisar">
-            <span data-ico="up" data-tam="28"></span>
+            <span class="drop-ic" data-ico="up" data-tam="22"></span>
             <span class="dt">Arraste o arquivo aqui ou <b>clique para escolher</b></span>
-            <span class="muted" style="font-size:12px">Somente arquivos .docx</span>
+            <span class="dsub">Somente arquivos .docx</span>
             <span class="fname" hidden></span>
             <input class="sr" type="file" accept=".docx" data-file="analisar">
           </label>
-          <div><button class="btn out" data-act="analisar" disabled>Analisar arquivo</button></div>
+          <div class="acts"><button class="btn out" data-act="analisar" disabled>Analisar arquivo</button></div>
         </div>
       </div>
+
       <div class="res" data-res aria-live="polite">
-        <div style="padding:24px;display:flex;flex-direction:column;gap:8px">
-          <h2>Resultado da análise</h2>
-          <span class="muted" style="font-size:15px">Envie um template para ver aqui os problemas encontrados e onde corrigi-los.</span>
+        <div class="vazio">
+          <span class="vazio-ic" data-ico="lupa" data-tam="22"></span>
+          <div>
+            <h2>Resultado da análise</h2>
+            <span class="muted">Envie um template para ver aqui os problemas encontrados e onde corrigi-los.</span>
+          </div>
         </div>
       </div>
     </div>
@@ -89,49 +208,50 @@
     <!-- VARIÁVEIS -->
     <div class="panel" id="painel-variaveis" role="tabpanel" aria-labelledby="tab-variaveis" data-panel="variaveis" hidden>
       <div class="vtop">
-        <p class="lead" style="flex:1 1 360px">Clique em uma variável para copiá-la e cole no seu template exatamente como aparece.</p>
+        <p class="lead">Clique em uma variável para copiá-la. Depois é só colar no template exatamente como ela aparece.</p>
         <div class="busca">
-          <span data-ico="lupa" data-tam="20"></span>
-          <div style="flex:1">
-            <label class="lbl" for="bv">Buscar variável</label>
+          <label class="lbl" for="bv">Buscar variável</label>
+          <div class="in-ic">
+            <span data-ico="lupa" data-tam="18"></span>
             <input class="in" id="bv" type="search" placeholder="Ex.: CPF, e-mail, parcela" autocomplete="off" spellcheck="false">
           </div>
         </div>
       </div>
-      <div data-grupos style="display:flex;flex-direction:column;gap:16px">
+      <div class="grupos" data-grupos>
         <div class="grp"><p class="nada">Carregando variáveis…</p></div>
       </div>
     </div>
 
     <!-- PERSONALIZAÇÃO -->
     <div class="panel" id="painel-personalizacao" role="tabpanel" aria-labelledby="tab-personalizacao" data-panel="personalizacao" hidden>
-      <p class="lead">Ajuste o modelo de referência usado na análise. As alterações ficam salvas neste navegador e valem para as abas Analisar e Variáveis.</p>
-      <div class="row" style="align-items:flex-start">
+      <p class="lead">Use quando o sistema aceita uma variável que o analisador ainda não conhece. As alterações ficam salvas neste navegador e valem para as abas Analisar e Variáveis.</p>
+      <div class="row">
         <div class="box">
           <div class="bh">
-            <div class="ic soft" data-ico="doc"></div>
-            <div>
-              <h2 style="font-size:18px;margin-bottom:4px">Modelo de referência</h2>
-              <span class="muted">Envie templates .docx que já funcionam no sistema. As variáveis, condições e laços deles passam a ser aceitos, além dos do modelo padrão.</span>
-            </div>
+            <span class="ic soft" data-ico="doc" data-tam="20"></span>
+            <div class="tt"><h3>Modelo de referência</h3></div>
           </div>
-          <div class="kv"><span>Modelo em uso</span><span data-k="modelo">Padrão</span></div>
-          <div class="kv"><span>Variáveis de texto</span><span data-k="nvars">—</span></div>
-          <div class="kv" style="border:0;padding:0"><span>Condições e laços</span><span data-k="nlogica">—</span></div>
+          <p class="muted">Envie templates .docx que já funcionam no sistema. As variáveis, condições e laços deles passam a ser aceitos, além dos do modelo padrão.</p>
+          <dl class="kvs">
+            <div class="kv"><dt>Modelo em uso</dt><dd data-k="modelo">Padrão</dd></div>
+            <div class="kv"><dt>Variáveis de texto</dt><dd data-k="nvars">—</dd></div>
+            <div class="kv"><dt>Condições e laços</dt><dd data-k="nlogica">—</dd></div>
+          </dl>
           <div class="refs" data-refs></div>
-          <label class="drop" data-drop="referencia" style="padding:18px">
-            <span data-ico="up" data-tam="24"></span>
+          <label class="drop compacto" data-drop="referencia">
+            <span class="drop-ic" data-ico="up" data-tam="20"></span>
             <span class="dt">Arraste um ou mais .docx ou <b>clique para escolher</b></span>
             <input class="sr" type="file" accept=".docx" multiple data-file="referencia">
           </label>
-          <div class="end"><button class="btn txt" data-act="restaurar">Restaurar padrão</button></div>
           <p class="msg" data-msg="ref" role="status" hidden></p>
+          <div class="end"><button class="btn txt" data-act="restaurar">Restaurar padrão</button></div>
         </div>
         <div class="box">
-          <div>
-            <h2 style="font-size:18px">Variáveis extras aceitas</h2>
-            <p class="muted" style="margin:6px 0 0">Uma por linha, só o nome (ex.: ValorPlano). Para variável de imagem, escreva <code>image:NomeDaVariavel</code>. Elas aparecem na aba Variáveis em "Outras variáveis".</p>
+          <div class="bh">
+            <span class="ic soft" data-ico="copy" data-tam="20"></span>
+            <div class="tt"><h3>Variáveis extras aceitas</h3></div>
           </div>
+          <p class="muted">Uma por linha, só o nome (ex.: ValorPlano). Para variável de imagem, escreva <code>image:NomeDaVariavel</code>. Elas aparecem na aba Variáveis em "Outras variáveis".</p>
           <textarea class="ta" id="ex" aria-label="Variáveis extras aceitas" spellcheck="false"></textarea>
           <div class="end"><button class="btn pri" data-act="salvar">Salvar</button></div>
         </div>
@@ -140,41 +260,86 @@
 
     <!-- COMPRESSOR -->
     <div class="panel" id="painel-compressor" role="tabpanel" aria-labelledby="tab-compressor" data-panel="compressor" hidden>
-      <div class="row" style="align-items:flex-start">
-        <div class="box hl" style="flex:1 1 420px">
+      <p class="lead">Arquivo grande demais para o sistema? O compressor reduz as imagens do .docx até ele ficar com no máximo 2 MB.</p>
+      <div class="row comp">
+        <div class="box hl">
           <div class="bh">
-            <div class="ic" data-ico="comp"></div>
-            <div>
-              <div class="tt"><h2>Comprimir .docx</h2><span class="badge b-roxo">até 2 MB</span></div>
-              <span class="muted">Reduz as imagens do documento. O texto e a formatação não mudam, e o arquivo não sai do seu computador.</span>
-            </div>
+            <span class="ic" data-ico="comp" data-tam="20"></span>
+            <div class="tt"><h3>Comprimir .docx</h3><span class="badge b-roxo">até 2 MB</span></div>
           </div>
+          <p class="muted">O texto e a formatação não mudam, e o arquivo não sai do seu computador.</p>
           <label class="drop" data-drop="compressor">
-            <span data-ico="up" data-tam="28"></span>
+            <span class="drop-ic" data-ico="up" data-tam="22"></span>
             <span class="dt">Arraste o arquivo aqui ou <b>clique para escolher</b></span>
-            <span class="muted" style="font-size:12px">Somente arquivos .docx</span>
+            <span class="dsub">Somente arquivos .docx</span>
             <span class="fname" hidden></span>
             <input class="sr" type="file" accept=".docx" data-file="compressor">
           </label>
           <label class="chk"><input type="checkbox" id="rf"><span><b>Remover fontes incorporadas, se necessário.</b> <span class="muted">Só vale para documentos com fontes embutidas; as letras podem mudar de aparência.</span></span></label>
-          <div><button class="btn pri" data-act="comprimir" disabled>Comprimir para até 2 MB</button></div>
+          <div class="acts"><button class="btn pri" data-act="comprimir" disabled>Comprimir para até 2 MB</button></div>
           <div class="prog" hidden><span class="muted" data-ptxt></span><div class="trilho"><div class="barra"></div></div></div>
         </div>
-        <div class="box" style="flex:1 1 320px">
-          <h2>Resultado</h2>
-          <div class="kv"><span>Tamanho original</span><span data-k="orig">—</span></div>
-          <div class="kv"><span>Tamanho final</span><span data-k="final">—</span></div>
-          <div class="kv" style="border:0;padding:0"><span>Redução</span><span data-k="red">—</span></div>
+        <div class="box">
+          <div class="tt"><h3>Resultado</h3></div>
+          <dl class="kvs">
+            <div class="kv"><dt>Tamanho original</dt><dd data-k="orig">—</dd></div>
+            <div class="kv"><dt>Tamanho final</dt><dd data-k="final">—</dd></div>
+            <div class="kv"><dt>Redução</dt><dd data-k="red">—</dd></div>
+          </dl>
           <div class="rcard" data-rcard role="status" hidden><strong data-rtitulo></strong><ul data-rdet></ul></div>
-          <button class="btn out" data-act="baixar" disabled><span data-ico="down" data-tam="18"></span><span data-blabel>Baixar arquivo comprimido</span></button>
-          <button class="btn txt" data-act="analisar-comp" disabled>Analisar este arquivo</button>
+          <div class="pilha">
+            <button class="btn out" data-act="baixar" disabled><span data-ico="down" data-tam="18"></span><span data-blabel>Baixar arquivo comprimido</span></button>
+            <button class="btn txt" data-act="analisar-comp" disabled>Analisar este arquivo</button>
+          </div>
         </div>
       </div>
     </div>
+  </div>
+</section>
 
-    <div class="foot"><span>Analisador de Templates DOCX · v<span data-versao>—</span></span><span>Desenvolvido por Maria Julia Talamini</span></div>
-  </section>
+<!-- ============ DÚVIDAS ============ -->
+<section class="secao" id="duvidas">
+  <div class="wrap estreito">
+    <div class="sec-cab">
+      <h2 class="h-sec">Dúvidas frequentes</h2>
+    </div>
+    <div class="faq">
+      <details>
+        <summary>Por que o documento do Google Docs precisa estar público?</summary>
+        <p>O analisador lê o documento pela exportação pública do Google. No Docs, clique em Compartilhar e, em "Acesso geral", escolha "Qualquer pessoa com o link" como Leitor. Se preferir não compartilhar, baixe como .docx e envie o arquivo.</p>
+      </details>
+      <details>
+        <summary>Meu arquivo é enviado para algum servidor?</summary>
+        <p>Não. A análise e a compressão acontecem no seu navegador. No caso do link do Google Docs, o servidor só repassa a exportação pública do documento.</p>
+      </details>
+      <details>
+        <summary>O que quer dizer "não existe no modelo de referência"?</summary>
+        <p>A variável, condição ou laço não está entre os que o sistema reconhece. Confira a grafia na aba Variáveis. Se for uma variável nova que o sistema já aceita, cadastre na aba Personalização.</p>
+      </details>
+      <details>
+        <summary>As variáveis de foreach não retornam valor. Por quê?</summary>
+        <p>Elas só funcionam dentro de um bloco <code>&lt;&lt;foreach&gt;&gt;</code>. Fora dele, ficam vazias. A aba Variáveis tem estruturas prontas com o bloco completo para copiar.</p>
+      </details>
+      <details>
+        <summary>Tenho um arquivo .doc antigo. Funciona?</summary>
+        <p>Não. Abra o arquivo no Word e use "Salvar como" no formato .docx.</p>
+      </details>
+      <details>
+        <summary>O arquivo passou de 2 MB. O que faço?</summary>
+        <p>Use a aba Compressor. Ela reduz as imagens do documento sem mudar o texto. Depois, clique em "Analisar este arquivo" para conferir o resultado.</p>
+      </details>
+    </div>
+  </div>
+</section>
+
 </main>
+
+<footer class="foot">
+  <div class="wrap foot-in">
+    <span>Analisador de Templates DOCX · v<span data-versao>—</span></span>
+    <span>Desenvolvido por Maria Julia Talamini</span>
+  </div>
+</footer>
 
 <div class="toast" role="status" hidden></div>
 
@@ -184,5 +349,6 @@
 <script src="compartilhado/compressor.js"></script>
 <script src="compartilhado/variaveis.js"></script>
 <script src="app.js"></script>
+<script src="pagina.js"></script>
 </body>
 </html>

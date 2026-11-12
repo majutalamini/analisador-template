@@ -31,7 +31,24 @@
   const $ = (s) => document.querySelector(s);
   const $$ = (s) => [...document.querySelectorAll(s)];
   const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-  $('[data-versao]').textContent = VERSAO_EXTENSAO;
+  // Sem a pasta compartilhado/ (gerada por scripts/sync.mjs) a análise não funciona, mas a
+  // página continua navegável e mostra o aviso em vez de travar as abas.
+  const FALTAM_ARQUIVOS = typeof VAR_CATEGORIES === 'undefined' || typeof TemplateLinter === 'undefined';
+  $('[data-versao]').textContent = typeof VERSAO_EXTENSAO !== 'undefined' ? VERSAO_EXTENSAO : '—';
+  if (FALTAM_ARQUIVOS) {
+    console.error('Arquivos de compartilhado/ não carregados. Rode "node scripts/sync.mjs" na pasta web/.');
+    const aviso = '<div style="padding:24px;display:flex;flex-direction:column;gap:8px"><h2>Analisador indisponível</h2><p class="msg err">Os arquivos da extensão não foram carregados. Recarregue a página; se o problema continuar, avise o suporte.</p></div>';
+    $('[data-res]').innerHTML = aviso;
+    $('[data-grupos]').innerHTML = aviso;
+    const abrir = (id) => {
+      if (!document.querySelector(`[data-panel="${id}"]`)) id = 'analisar';
+      document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', String(t.dataset.tab === id)));
+      document.querySelectorAll('[data-panel]').forEach(p => { p.hidden = p.dataset.panel !== id; });
+    };
+    document.addEventListener('click', (e) => { const t = e.target.closest('[data-tab]'); if (t) abrir(t.dataset.tab); });
+    abrir(new URLSearchParams(location.search).get('aba') || 'analisar');
+    return;
+  }
 
   // ---------- Preferências (ficam só neste navegador) ----------
   const store = {
