@@ -1,0 +1,5 @@
+# Gerado a partir da extensão por scripts/sync.mjs
+public/compartilhado/
+functions/node_modules/
+.firebase/
+firebase-debug.log
