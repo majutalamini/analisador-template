@@ -15,12 +15,9 @@
         "source": "**",
         "headers": [
           { "key": "X-Content-Type-Options", "value": "nosniff" },
-          { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
+          { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+          { "key": "Cache-Control", "value": "no-cache" }
         ]
-      },
-      {
-        "source": "/compartilhado/**",
-        "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
       }
     ]
   },
