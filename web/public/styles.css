@@ -45,7 +45,7 @@
 
   --font: "Figtree", "Segoe UI", system-ui, sans-serif;
   --mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
-  --topo: 64px;
+  --topo: 80px;
 }
 
 @media (prefers-color-scheme: dark){
@@ -108,10 +108,11 @@ code{font-family:var(--mono);font-size:.86em;background:var(--surface-2);border:
 /* ---------- Cabeçalho ---------- */
 .topo{position:sticky;top:0;z-index:10;background:var(--surface);border-bottom:1px solid var(--line);transition:box-shadow var(--t) var(--ease)}
 .topo.rolou{box-shadow:var(--shadow-md)}
-.topo-in{height:var(--topo);display:flex;align-items:center;gap:32px}
+.topo-in{height:var(--topo);display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:32px;max-width:none;padding:0 48px}
+.topo-in .btn{justify-self:end}
 .marca{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--text);font-weight:700;font-size:17px;letter-spacing:-.01em;white-space:nowrap;border-radius:var(--r)}
-.marca img{width:34px;height:34px;border-radius:9px;flex:0 0 auto}
-.menu{display:flex;gap:4px;margin-right:auto}
+.marca img{width:40px;height:40px;border-radius:10px;flex:0 0 auto}
+.menu{display:flex;gap:4px}
 .menu a{color:var(--text-2);text-decoration:none;font-size:15px;font-weight:550;padding:8px 12px;border-radius:var(--r);transition:color var(--t-fast) var(--ease),background-color var(--t-fast) var(--ease)}
 .menu a:hover{color:var(--text);background:var(--surface-2)}
 .menu a[aria-current]{color:var(--brand);background:var(--brand-tint)}
@@ -434,7 +435,7 @@ a.lnk:hover{text-decoration:underline;text-underline-offset:3px}
 }
 @media (max-width:860px){
   .menu{display:none}
-  .topo-in{justify-content:space-between}
+  .topo-in{display:flex;justify-content:space-between}
   .passos{grid-template-columns:1fr;gap:28px}
   .fontes{grid-template-columns:1fr}
   .ou{flex-direction:row}
@@ -442,7 +443,7 @@ a.lnk:hover{text-decoration:underline;text-underline-offset:3px}
 }
 @media (max-width:640px){
   :root{--topo:58px}
-  .wrap{padding:0 16px}
+  .wrap,.topo-in{padding:0 16px}
   .marca span{font-size:15px}
   .marca img{width:30px;height:30px}
   .secao{padding:56px 0}
