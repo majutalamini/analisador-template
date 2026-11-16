@@ -142,7 +142,7 @@
       </button>
       <button class="tab" role="tab" id="tab-personalizacao" data-tab="personalizacao" aria-controls="painel-personalizacao" aria-selected="false">
         <span class="tab-ic" data-ico="doc" data-tam="22"></span>
-        <span class="tab-tx"><span class="tab-t">Personalização</span><span class="tab-d">Ajustar o modelo de referência</span></span>
+        <span class="tab-tx"><span class="tab-t">Personalização</span><span class="tab-d">Inserir as variáveis no template</span></span>
       </button>
       <button class="tab" role="tab" id="tab-compressor" data-tab="compressor" aria-controls="painel-compressor" aria-selected="false">
         <span class="tab-ic" data-ico="comp" data-tam="22"></span>
@@ -224,27 +224,30 @@
 
     <!-- PERSONALIZAÇÃO -->
     <div class="panel" id="painel-personalizacao" role="tabpanel" aria-labelledby="tab-personalizacao" data-panel="personalizacao" hidden>
-      <p class="lead">Use quando o sistema aceita uma variável que o analisador ainda não conhece. As alterações ficam salvas neste navegador e valem para as abas Analisar e Variáveis.</p>
+      <p class="lead">Envie um template sem variáveis, escrito em texto corrido. O sistema troca os termos pelas variáveis certas (por exemplo, "contratante" vira o nome da empresa) e devolve o arquivo pronto.</p>
       <div class="row">
-        <div class="box">
+        <div class="box hl">
           <div class="bh">
-            <span class="ic soft" data-ico="doc" data-tam="20"></span>
-            <div class="tt"><h3>Modelo de referência</h3></div>
+            <span class="ic" data-ico="doc" data-tam="20"></span>
+            <div class="tt"><h3>Inserir variáveis no template</h3></div>
           </div>
-          <p class="muted">Envie templates .docx que já funcionam no sistema. As variáveis, condições e laços deles passam a ser aceitos, além dos do modelo padrão.</p>
-          <dl class="kvs">
-            <div class="kv"><dt>Modelo em uso</dt><dd data-k="modelo">Padrão</dd></div>
-            <div class="kv"><dt>Variáveis de texto</dt><dd data-k="nvars">—</dd></div>
-            <div class="kv"><dt>Condições e laços</dt><dd data-k="nlogica">—</dd></div>
-          </dl>
-          <div class="refs" data-refs></div>
-          <label class="drop compacto" data-drop="referencia">
-            <span class="drop-ic" data-ico="up" data-tam="20"></span>
-            <span class="dt">Arraste um ou mais .docx ou <b>clique para escolher</b></span>
-            <input class="sr" type="file" accept=".docx" multiple data-file="referencia">
+          <label class="drop" data-drop="personalizar">
+            <span class="drop-ic" data-ico="up" data-tam="22"></span>
+            <span class="dt">Arraste o arquivo aqui ou <b>clique para escolher</b></span>
+            <span class="dsub">Somente arquivos .docx</span>
+            <span class="fname" hidden></span>
+            <input class="sr" type="file" accept=".docx" data-file="personalizar">
           </label>
-          <p class="msg" data-msg="ref" role="status" hidden></p>
-          <div class="end"><button class="btn txt" data-act="restaurar">Restaurar padrão</button></div>
+          <div class="acts"><button class="btn pri" data-act="personalizar" disabled>Inserir variáveis</button></div>
+          <p class="msg" data-msg="pers" role="status" hidden></p>
+          <div class="rcard" data-pcard role="status" hidden>
+            <strong data-ptitulo></strong>
+            <ul data-plista></ul>
+          </div>
+          <div class="pilha">
+            <button class="btn out" data-act="baixar-pers" disabled><span data-ico="down" data-tam="18"></span><span>Baixar template com variáveis</span></button>
+            <button class="btn txt" data-act="analisar-pers" disabled>Analisar este arquivo</button>
+          </div>
         </div>
         <div class="box">
           <div class="bh">
@@ -314,7 +317,7 @@
       </details>
       <details>
         <summary>O que quer dizer "não existe no modelo de referência"?</summary>
-        <p>A variável, condição ou laço não está entre os que o sistema reconhece. Confira a grafia na aba Variáveis. Se for uma variável nova que o sistema já aceita, cadastre na aba Personalização.</p>
+        <p>A variável, condição ou laço não está entre os que o sistema reconhece. Confira a grafia na aba Variáveis. Se for uma variável nova que o sistema já aceita, cadastre em "Variáveis extras" na aba Personalização.</p>
       </details>
       <details>
         <summary>As variáveis de foreach não retornam valor. Por quê?</summary>
@@ -348,6 +351,7 @@
 <script src="compartilhado/linter.browser.js"></script>
 <script src="compartilhado/compressor.js"></script>
 <script src="compartilhado/variaveis.js"></script>
+<script src="personalizar.js"></script>
 <script src="app.js"></script>
 <script src="pagina.js"></script>
 </body>

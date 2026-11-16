@@ -55,7 +55,7 @@
     get(k, d) { try { const v = localStorage.getItem('nfAnalisador.' + k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
     set(k, v) { try { localStorage.setItem('nfAnalisador.' + k, JSON.stringify(v)); } catch (e) { /* sem armazenamento */ } }
   };
-  const cfg = Object.assign({ extras: '', referencia: null, referenciaArquivos: [] }, store.get('config', {}));
+  const cfg = Object.assign({ extras: '' }, store.get('config', {}));
 
   const limparNome = (s) => s.replace(/[<>\[\]\s]/g, '');
   function extrasLista() {
@@ -65,16 +65,10 @@
     }).filter(e => e.name);
   }
 
-  // Modelo de referência efetivo = padrão da extensão + modelos .docx enviados + variáveis extras.
+  // Modelo de referência efetivo = padrão da extensão + variáveis extras.
   function schemaAtual() {
     const out = {};
     for (const [k, v] of Object.entries(DEFAULT_SCHEMA)) out[k] = new Set(v);
-    if (cfg.referencia) {
-      for (const [k, v] of Object.entries(cfg.referencia)) {
-        if (!out[k]) out[k] = new Set();
-        v.forEach(x => out[k].add(x));
-      }
-    }
     for (const e of extrasLista()) {
       (e.img ? out.imageVariables : out.variables).add(e.name);
       out.allIdentifiers.add(e.name);
@@ -215,8 +209,9 @@
   }
 
   // ---------- Arquivos ----------
-  const arquivos = { analisar: null, compressor: null };
+  const arquivos = { analisar: null, compressor: null, personalizar: null };
   let comprimido = null;
+  let personalizado = null;
 
   function definirArquivo(tipo, file) {
     if (!file) return;
@@ -226,6 +221,10 @@
     nome.textContent = `${file.name} · ${formatMB(file.size)}`;
     nome.hidden = false;
     if (tipo === 'analisar') $('[data-act="analisar"]').disabled = false;
+    if (tipo === 'personalizar') {
+      $('[data-act="personalizar"]').disabled = false;
+      limparPersonalizacao();
+    }
     if (tipo === 'compressor') {
       $('[data-act="comprimir"]').disabled = false;
       $('[data-k="orig"]').textContent = formatMB(file.size);
@@ -234,7 +233,6 @@
   }
 
   function receberArquivos(tipo, files) {
-    if (tipo === 'referencia') return adicionarReferencias([...files]);
     definirArquivo(tipo, files[0]);
   }
 
@@ -489,53 +487,63 @@
   // ---------- Personalização ----------
   function renderPersonalizacao() {
     if (!DEFAULT_SCHEMA) return;
-    const s = schemaAtual();
-    const temRef = !!cfg.referencia;
-    $('[data-k="modelo"]').textContent = temRef ? 'Padrão + modelos enviados' : (extrasLista().length ? 'Padrão + extras' : 'Padrão');
-    $('[data-k="nvars"]').textContent = `${s.variables.length} (padrão: ${DEFAULT_SCHEMA.variables.length})`;
-    $('[data-k="nlogica"]').textContent = `${s.rawConditions.length} condições · ${s.rawLoops.length} laços`;
-    $('[data-refs]').innerHTML = (cfg.referenciaArquivos || []).map(n => `<span class="chip c-ok">${esc(n)}</span>`).join('');
-    $('[data-act="restaurar"]').disabled = !temRef;
     $('#ex').value = cfg.extras || '';
   }
 
-  async function adicionarReferencias(files) {
-    const docs = files.filter(f => /\.docx$/i.test(f.name));
-    const msg = $('[data-msg="ref"]');
-    if (!docs.length) { toast('Envie arquivos .docx.'); return; }
-    msg.hidden = false; msg.className = 'msg'; msg.textContent = 'Lendo os modelos…';
+  function limparPersonalizacao() {
+    personalizado = null;
+    $('[data-pcard]').hidden = true;
+    $('[data-msg="pers"]').hidden = true;
+    $('[data-act="baixar-pers"]').disabled = true;
+    $('[data-act="analisar-pers"]').disabled = true;
+  }
+
+  // Insere as variáveis no template (personalizar.js). Só usa variáveis que o sistema conhece.
+  async function rodarPersonalizacao() {
+    const file = arquivos.personalizar;
+    if (!file || !DEFAULT_SCHEMA) return;
+    const btn = $('[data-act="personalizar"]');
+    const msg = $('[data-msg="pers"]');
+    btn.disabled = true;
+    limparPersonalizacao();
+    msg.hidden = false; msg.className = 'msg'; msg.textContent = 'Lendo o template…';
     try {
-      const bufs = [];
-      for (const f of docs) bufs.push(await f.arrayBuffer());
-      const novo = await TemplateLinter.buildMergedSchema(bufs);
-      const merged = {};
-      for (const k of new Set([...Object.keys(cfg.referencia || {}), ...Object.keys(novo)])) {
-        merged[k] = [...new Set([...((cfg.referencia || {})[k] || []), ...(novo[k] || [])])].sort();
+      const conhecidas = new Set(schemaAtual().variables);
+      const r = await Personalizador.inserirVariaveis(await file.arrayBuffer(), {
+        aceitaVariavel: (v) => conhecidas.has(v)
+      });
+      msg.hidden = true;
+      const card = $('[data-pcard]');
+      card.hidden = false;
+      if (!r.total) {
+        card.className = 'rcard err';
+        $('[data-ptitulo]').textContent = 'Não encontrei nada para substituir neste template.';
+        $('[data-plista]').innerHTML = '<li>O documento já tem as variáveis ou usa termos que o sistema ainda não reconhece.</li>';
+        return;
       }
-      const antes = schemaAtual().variables.length;
-      cfg.referencia = merged;
-      cfg.referenciaArquivos = [...new Set([...(cfg.referenciaArquivos || []), ...docs.map(f => f.name)])];
-      store.set('config', cfg);
-      const novas = schemaAtual().variables.length - antes;
-      msg.textContent = novas > 0
-        ? `${plural(novas, 'variável nova passou', 'variáveis novas passaram')} a ser aceita${novas === 1 ? '' : 's'}.`
-        : 'Modelos adicionados. Nenhuma variável nova em relação ao modelo atual.';
-      renderPersonalizacao();
+      card.className = 'rcard ok';
+      $('[data-ptitulo]').textContent = `Pronto! ${plural(r.total, 'trecho foi trocado', 'trechos foram trocados')} por variáveis.`;
+      $('[data-plista]').innerHTML = r.itens.map(i =>
+        `<li>${esc(i.nome)}: <code>${esc(Personalizador.TAG(i.variavel))}</code> × ${i.quantidade}</li>`).join('');
+      personalizado = new File([r.blob], file.name.replace(/\.docx$/i, '') + '-com-variaveis.docx', { type: r.blob.type });
+      $('[data-act="baixar-pers"]').disabled = false;
+      $('[data-act="analisar-pers"]').disabled = false;
     } catch (err) {
       console.error(err);
-      msg.className = 'msg err';
-      msg.textContent = 'Não foi possível ler o modelo: ' + (err.message || err);
+      msg.hidden = false; msg.className = 'msg err';
+      msg.textContent = 'Não foi possível processar o template: ' + (err.message || err);
+    } finally {
+      btn.disabled = false;
     }
   }
 
-  function restaurarPadrao() {
-    cfg.referencia = null;
-    cfg.referenciaArquivos = [];
-    store.set('config', cfg);
-    const msg = $('[data-msg="ref"]');
-    msg.hidden = false; msg.className = 'msg';
-    msg.textContent = 'Modelo de referência restaurado para o padrão.';
-    renderPersonalizacao();
+  function baixarPersonalizado() {
+    if (!personalizado) return;
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(personalizado);
+    a.download = personalizado.name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
   }
 
   function salvarExtras() {
@@ -573,7 +581,14 @@
       case 'comprimir': return rodarCompressao();
       case 'baixar': return baixar();
       case 'salvar': return salvarExtras();
-      case 'restaurar': return restaurarPadrao();
+      case 'personalizar': return rodarPersonalizacao();
+      case 'baixar-pers': return baixarPersonalizado();
+      case 'analisar-pers': {
+        if (!personalizado) return;
+        definirArquivo('analisar', personalizado);
+        mudarAba('analisar');
+        return analisarArquivo();
+      }
       case 'hist': {
         const box = $('.hist');
         box.hidden = !box.hidden;
