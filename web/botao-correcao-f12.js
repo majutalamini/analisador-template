@@ -16,7 +16,7 @@
 (() => {
   'use strict';
 
-  const URL_ANALISADOR = 'https://SEU-PROJETO.web.app/';
+  const URL_ANALISADOR = 'https://analisador-de-template.web.app/';
   const ROTULO = 'Correção';
   const MARCA = 'data-nf-correcao';
 

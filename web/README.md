@@ -49,7 +49,7 @@ firebase emulators:start --only hosting,functions
 
 ## Botão no Next Fit (F12)
 
-1. Abra `botao-correcao-f12.js` e troque `URL_ANALISADOR` pelo endereço publicado.
+1. Abra `botao-correcao-f12.js` e troque `URL_ANALISADOR` pelo endereço publicado (já aponta para https://analisador-de-template.web.app).
 2. No Next Fit, na tela de Templates: F12 › Console › cole o código › Enter.
 
 O botão aparece ao lado do **+ TEMPLATE** com o mesmo visual e abre o analisador em outra
